@@ -24,8 +24,7 @@ class DatePickerFragment(
         val month = c.get(Calendar.MONTH)
         val day = c.get(Calendar.DAY_OF_MONTH)
 
-        android.app.AlertDialog.THEME_DEVICE_DEFAULT_DARK
-        return DatePickerDialog(requireContext(), this, year, month, day)
+        return DatePickerDialog(requireContext(), android.R.style.Theme_DeviceDefault_Dialog, this, year, month, day)
     }
 
     override fun onDateSet(picker: DatePicker, year: Int, month: Int, day: Int) {
