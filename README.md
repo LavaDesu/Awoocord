@@ -1,4 +1,4 @@
-# `Awoocord Plugins`
+# Awoocord Plugins
 
 ## [Scout](https://github.com/LavaDesu/Awoocord/raw/builds/Scout.zip )
 
