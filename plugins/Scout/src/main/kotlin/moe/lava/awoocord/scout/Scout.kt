@@ -9,6 +9,7 @@ import com.aliucord.entities.Plugin
 import com.aliucord.patcher.PreHook
 import com.aliucord.patcher.after
 import com.aliucord.patcher.before
+import com.aliucord.patcher.instead
 import com.discord.BuildConfig
 import com.discord.restapi.RequiredHeadersInterceptor
 import com.discord.restapi.RequiredHeadersInterceptor.HeadersProvider
@@ -21,12 +22,14 @@ import com.discord.utilities.rest.RestAPI.AppHeadersProvider
 import com.discord.utilities.search.network.`SearchFetcher$getRestObservable$3`
 import com.discord.utilities.search.query.FilterType
 import com.discord.utilities.search.query.node.QueryNode
+import com.discord.utilities.search.query.node.answer.HasAnswerOption
 import com.discord.utilities.search.query.node.content.ContentNode
 import com.discord.utilities.search.query.node.filter.FilterNode
 import com.discord.utilities.search.query.parsing.QueryParser
 import com.discord.utilities.search.strings.SearchStringProvider
 import com.discord.utilities.search.suggestion.SearchSuggestionEngine
 import com.discord.utilities.search.suggestion.entries.FilterSuggestion
+import com.discord.utilities.search.suggestion.entries.HasSuggestion
 import com.discord.utilities.search.suggestion.entries.SearchSuggestion
 import com.discord.widgets.search.suggestions.WidgetSearchSuggestionsAdapter
 import com.franmontiel.persistentcookiejar.PersistentCookieJar
@@ -50,13 +53,16 @@ class Scout : Plugin() {
         ssProvider = ScoutSearchStringProvider(context)
         searchApi = buildSearchApi(context)
         extendFilterType()
+        extendHasAnswerOption()
         patchQueryParser()
         patchQuery()
+        patchHasAnswerOption()
         patchSearchUI(context)
     }
 
     override fun stop(context: Context) {
         resetFilterType()
+        resetHasAnswerOption()
         patcher.unpatchAll()
     }
 
@@ -121,6 +127,107 @@ class Scout : Plugin() {
         field.isAccessible = true
         field.set(null, origFilterTypes)
         origFilterTypes = null
+    }
+
+    private var origHasAnswerOptions: Array<HasAnswerOption>? = null
+    // Creates new pseudo-values of the `HasAnswerOption` enum for poll and forwarded filters
+    @Suppress("LocalVariableName")
+    private fun extendHasAnswerOption() {
+        val cls = HasAnswerOption::class.java
+        val constructor = cls.declaredConstructors[0]
+        constructor.isAccessible = true
+
+        val field = cls.getDeclaredField("\$VALUES")
+        field.isAccessible = true
+        val values = field.get(null) as Array<HasAnswerOption>
+        origHasAnswerOptions = origHasAnswerOptions ?: values
+        var nextIdx = values.size
+
+        val POLL = constructor.newInstance("POLL", nextIdx++, "poll") as HasAnswerOption
+        val SNAPSHOT = constructor.newInstance("SNAPSHOT", nextIdx, "snapshot") as HasAnswerOption
+        HasAnswerOptionExtension.POLL = POLL
+        HasAnswerOptionExtension.SNAPSHOT = SNAPSHOT
+        HasAnswerOptionExtension.values = arrayOf(POLL, SNAPSHOT)
+
+        val newValues = values.toMutableList()
+        newValues.addAll(HasAnswerOptionExtension.values)
+        field.set(null, newValues.toTypedArray())
+    }
+
+    private fun resetHasAnswerOption() {
+        if (origHasAnswerOptions == null)
+            return logger.error("No unpatched 'has' options?", null)
+
+        val cls = HasAnswerOption::class.java
+        val field = cls.getDeclaredField("\$VALUES")
+        field.isAccessible = true
+        field.set(null, origHasAnswerOptions)
+        origHasAnswerOptions = null
+    }
+
+    // Patches various methods that use HasAnswerOption to include our new options
+    private fun patchHasAnswerOption() {
+        patcher.before<HasAnswerOption.Companion>(
+            "getOptionFromString",
+            String::class.java,
+            SearchStringProvider::class.java
+        ) { param ->
+            val str = param.args[0] as String
+            if (str == ssProvider.hasPollString)
+                param.result = HasAnswerOptionExtension.POLL
+            else if (str == ssProvider.hasForwardString)
+                param.result = HasAnswerOptionExtension.SNAPSHOT
+        }
+
+        patcher.before<HasAnswerOption>(
+            "getLocalizedInputText",
+            SearchStringProvider::class.java
+        ) { param ->
+            if (this == HasAnswerOptionExtension.POLL)
+                param.result = ssProvider.hasPollString
+            else if (this == HasAnswerOptionExtension.SNAPSHOT)
+                param.result = ssProvider.hasForwardString
+        }
+
+        // private final String createHasAnswerRegex(SearchStringProvider searchStringProvider) {
+        patcher.instead<QueryParser.Companion>(
+            "createHasAnswerRegex",
+            SearchStringProvider::class.java
+        ) { param ->
+            val ossProvider = param.args[0] as SearchStringProvider
+
+            val matches = HasAnswerOption.values().joinToString("|") { it.getLocalizedInputText(ossProvider) }
+            "^\\s*($matches)"
+        }
+
+        // Patch to set icons
+        patcher.before<WidgetSearchSuggestionsAdapter.HasViewHolder.Companion>(
+            "getIconRes",
+            HasAnswerOption::class.java
+        ) { param ->
+            val type = param.args[0] as HasAnswerOption
+            if (type == HasAnswerOptionExtension.POLL)
+                param.result = 0x7f08032e
+            else if (type == HasAnswerOptionExtension.SNAPSHOT)
+                param.result = 0x7f08032e
+        }
+
+        patcher.after<SearchSuggestionEngine>(
+            "getHasSuggestions",
+            CharSequence::class.java,
+            FilterType::class.java,
+            SearchStringProvider::class.java,
+        ) { param ->
+            val query = param.args[0] as CharSequence
+            val res = (param.result as List<SearchSuggestion>).toMutableList()
+            for (type in HasAnswerOptionExtension.values) {
+                val st = ssProvider.stringFor(type) + ":"
+
+                if (st.contains(query))
+                    res.add(HasSuggestion(type))
+            }
+            param.result = res.toList()
+        }
     }
 
     // Patches the search query to also insert `min_id`, required for searching "after:" and "during:"
