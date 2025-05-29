@@ -82,7 +82,7 @@ class Scout : Plugin() {
         ) as SearchAPIInterface
     }
 
-    private val origFilterTypes: Array<FilterType>? = null
+    private var origFilterTypes: Array<FilterType>? = null
     // Creates new pseudo-values of the `FilterType` enum for date filters
     @Suppress("LocalVariableName")
     private fun extendFilterType() {
@@ -93,6 +93,7 @@ class Scout : Plugin() {
         val field = cls.getDeclaredField("\$VALUES")
         field.isAccessible = true
         val values = field.get(null) as Array<FilterType>
+        origFilterTypes = origFilterTypes ?: values
         var nextIdx = values.size
 
         val BEFORE = constructor.newInstance("BEFORE", nextIdx++) as FilterType
@@ -119,6 +120,7 @@ class Scout : Plugin() {
         val field = cls.getDeclaredField("\$VALUES")
         field.isAccessible = true
         field.set(null, origFilterTypes)
+        origFilterTypes = null
     }
 
     // Patches the search query to also insert `min_id`, required for searching "after:" and "during:"
