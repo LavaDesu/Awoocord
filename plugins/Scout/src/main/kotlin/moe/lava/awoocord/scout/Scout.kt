@@ -129,11 +129,21 @@ class Scout : Plugin() {
                 val self = param.thisObject as `SearchFetcher$getRestObservable$3`<*, *>
                 val retryAttempts = param.args[0] as Int?
                 val params = self.`$searchQuery`.params
-                val maxID = self.`$oldestMessageId`?.let { listOf(it.toString()) } ?: params["max_id"]
+
+                var minID = params["min_id"]
+                var maxID = params["max_id"]
+                val sortOrder = params["sort_order"]
+                self.`$oldestMessageId`?.let {
+                    if (sortOrder?.getOrNull(0) == "asc")
+                        minID = listOf(it.toString())
+                    else
+                        maxID = listOf(it.toString())
+                }
+
                 param.result = if (self.`$searchTarget`.type == StoreSearch.SearchTarget.Type.GUILD)
                     searchApi.searchGuildMessages(
                         self.`$searchTarget`.id,
-                        params["min_id"],
+                        minID,
                         maxID,
                         params["author_id"],
                         params["mentions"],
@@ -143,12 +153,12 @@ class Scout : Plugin() {
                         retryAttempts,
                         self.`$searchQuery`.includeNsfw,
                         listOf("timestamp"),
-                        params["sort_order"]
+                        sortOrder
                     )
                 else
                     searchApi.searchChannelMessages(
                         self.`$searchTarget`.id,
-                        params["min_id"],
+                        minID,
                         maxID,
                         params["author_id"],
                         params["mentions"],
@@ -157,7 +167,7 @@ class Scout : Plugin() {
                         retryAttempts,
                         self.`$searchQuery`.includeNsfw,
                         listOf("timestamp"),
-                        params["sort_order"]
+                        sortOrder
                     )
             }
         )
