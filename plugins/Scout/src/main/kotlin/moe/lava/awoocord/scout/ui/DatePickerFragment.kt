@@ -18,13 +18,15 @@ class DatePickerFragment(
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val c = Calendar.getInstance()
+        val calendar = Calendar.getInstance()
 
-        val year = c.get(Calendar.YEAR)
-        val month = c.get(Calendar.MONTH)
-        val day = c.get(Calendar.DAY_OF_MONTH)
+        val year = calendar.get(Calendar.YEAR)
+        val month = calendar.get(Calendar.MONTH)
+        val day = calendar.get(Calendar.DAY_OF_MONTH)
 
-        return DatePickerDialog(requireContext(), android.R.style.Theme_DeviceDefault_Dialog, this, year, month, day)
+        return DatePickerDialog(requireContext(), android.R.style.Theme_DeviceDefault_Dialog, this, year, month, day).apply {
+            datePicker.maxDate = calendar.timeInMillis
+        }
     }
 
     override fun onDateSet(picker: DatePicker, year: Int, month: Int, day: Int) {
