@@ -1,1 +1,1 @@
-{"Scout":{"minimumDiscordVersion":126021,"version":"1.0.0","build":"https://raw.githubusercontent.com/LavaDesu/Awoocord/builds/%s.zip","changelog":"1.0.0 - Initial release >w<"}}
+{"Scout":{"minimumDiscordVersion":126021,"version":"1.0.1","build":"https://raw.githubusercontent.com/LavaDesu/Awoocord/builds/%s.zip","changelog":"# 1.0.1\n* Fix not being able to search more than one page with sort:old\n\n# 1.0.0\n* Initial release >w<"}}
