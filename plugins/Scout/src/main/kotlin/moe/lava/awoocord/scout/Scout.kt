@@ -14,15 +14,18 @@ import com.discord.BuildConfig
 import com.discord.restapi.RequiredHeadersInterceptor
 import com.discord.restapi.RequiredHeadersInterceptor.HeadersProvider
 import com.discord.restapi.RestAPIBuilder
+import com.discord.simpleast.core.parser.ParseSpec
 import com.discord.simpleast.core.parser.Parser
 import com.discord.simpleast.core.parser.Rule
 import com.discord.stores.StoreSearch
 import com.discord.stores.StoreSearchInput
 import com.discord.utilities.rest.RestAPI.AppHeadersProvider
 import com.discord.utilities.search.network.`SearchFetcher$getRestObservable$3`
+import com.discord.utilities.search.network.SearchQuery
 import com.discord.utilities.search.query.FilterType
 import com.discord.utilities.search.query.node.QueryNode
 import com.discord.utilities.search.query.node.answer.HasAnswerOption
+import com.discord.utilities.search.query.node.answer.HasNode
 import com.discord.utilities.search.query.node.content.ContentNode
 import com.discord.utilities.search.query.node.filter.FilterNode
 import com.discord.utilities.search.query.parsing.QueryParser
@@ -31,17 +34,20 @@ import com.discord.utilities.search.suggestion.SearchSuggestionEngine
 import com.discord.utilities.search.suggestion.entries.FilterSuggestion
 import com.discord.utilities.search.suggestion.entries.HasSuggestion
 import com.discord.utilities.search.suggestion.entries.SearchSuggestion
+import com.discord.utilities.search.validation.SearchData
 import com.discord.widgets.search.suggestions.WidgetSearchSuggestionsAdapter
 import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import com.franmontiel.persistentcookiejar.cache.SetCookieCache
 import com.franmontiel.persistentcookiejar.persistence.SharedPrefsCookiePersistor
 import moe.lava.awoocord.scout.api.SearchAPIInterface
 import moe.lava.awoocord.scout.parsing.DateNode
+import moe.lava.awoocord.scout.parsing.SimpleParserRule
 import moe.lava.awoocord.scout.parsing.SortNode
 import moe.lava.awoocord.scout.parsing.UserIdNode
 import moe.lava.awoocord.scout.ui.DatePickerFragment
 import moe.lava.awoocord.scout.ui.ScoutResource
 import moe.lava.awoocord.scout.ui.ScoutSearchStringProvider
+import java.util.regex.Pattern
 
 @AliucordPlugin(requiresRestart = false)
 @Suppress("unused", "unchecked_cast")
@@ -49,14 +55,18 @@ class Scout : Plugin() {
     lateinit var ssProvider: ScoutSearchStringProvider
     lateinit var searchApi: SearchAPIInterface
 
-    override fun start(context: Context) {
+    override fun load(context: Context) {
         ssProvider = ScoutSearchStringProvider(context)
         searchApi = buildSearchApi(context)
+    }
+
+    override fun start(context: Context) {
         extendFilterType()
         extendHasAnswerOption()
-        patchQueryParser()
-        patchQuery()
         patchHasAnswerOption()
+        patchHasNode()
+        patchQuery()
+        patchQueryParser()
         patchSearchUI(context)
     }
 
@@ -102,16 +112,18 @@ class Scout : Plugin() {
         origFilterTypes = origFilterTypes ?: values
         var nextIdx = values.size
 
+        val EXCLUDE = constructor.newInstance("EXCLUDE", nextIdx++) as FilterType
         val BEFORE = constructor.newInstance("BEFORE", nextIdx++) as FilterType
         val DURING = constructor.newInstance("DURING", nextIdx++) as FilterType
         val AFTER = constructor.newInstance("AFTER", nextIdx++) as FilterType
         val SORT = constructor.newInstance("SORT", nextIdx) as FilterType
+        FilterTypeExtension.EXCLUDE = EXCLUDE
         FilterTypeExtension.BEFORE = BEFORE
         FilterTypeExtension.DURING = DURING
         FilterTypeExtension.AFTER = AFTER
         FilterTypeExtension.SORT = SORT
         FilterTypeExtension.dates = arrayOf(BEFORE, DURING, AFTER)
-        FilterTypeExtension.values = arrayOf(BEFORE, DURING, AFTER, SORT)
+        FilterTypeExtension.values = arrayOf(EXCLUDE, BEFORE, DURING, AFTER, SORT)
 
         val newValues = values.toMutableList()
         newValues.addAll(FilterTypeExtension.values)
@@ -212,21 +224,96 @@ class Scout : Plugin() {
                 param.result = 0x7f08032e
         }
 
-        patcher.after<SearchSuggestionEngine>(
+        patcher.instead<SearchSuggestionEngine>(
             "getHasSuggestions",
             CharSequence::class.java,
             FilterType::class.java,
             SearchStringProvider::class.java,
         ) { param ->
             val query = param.args[0] as CharSequence
-            val res = (param.result as List<SearchSuggestion>).toMutableList()
-            for (type in HasAnswerOptionExtension.values) {
-                val st = ssProvider.stringFor(type) + ":"
+            val filterType = param.args[1] as FilterType
+            val ossProvider = param.args[2] as SearchStringProvider
 
-                if (st.contains(query))
-                    res.add(HasSuggestion(type))
+            if (filterType != FilterType.HAS && filterType != FilterTypeExtension.EXCLUDE)
+                return@instead listOf<Any>()
+
+            val res = mutableListOf<HasSuggestion>()
+            for (opt in HasAnswerOption.values()) {
+                val filterText = opt.getLocalizedInputText(ossProvider)
+
+                if (filterText.contains(query))
+                    res.add(HasSuggestion(opt))
             }
-            param.result = res.toList()
+            res.toList()
+        }
+
+    }
+
+    // Patching HasNode related methods for our exclude: filter type
+    private fun patchHasNode() {
+        patcher.instead<HasNode>("getValidFilters") {
+            setOf(FilterTypeExtension.EXCLUDE, FilterType.HAS)
+        }
+
+        // Patch updateQuery to either include or exclude our has option
+        patcher.instead<HasNode>(
+            "updateQuery",
+            SearchQuery.Builder::class.java,
+            SearchData::class.java,
+            FilterType::class.java,
+        ) { param ->
+            val builder = param.args[0] as SearchQuery.Builder?
+            val filterType = param.args[2] as FilterType
+
+            checkNotNull(builder) { "queryBuilder" }
+
+            val field = HasNode::class.java.getDeclaredField("hasAnswerOption")
+            field.isAccessible = true
+            val opt = field.get(this) as HasAnswerOption
+
+            if (filterType == FilterType.HAS)
+                builder.appendParam("has", opt.restParamValue);
+            else if (filterType == FilterTypeExtension.EXCLUDE)
+                builder.appendParam("has", "-" + opt.restParamValue);
+        }
+
+        // Patching the behaviour when the has suggestion is clicked
+        patcher.before<StoreSearchInput>(
+            "onHasClicked",
+            HasAnswerOption::class.java,
+            CharSequence::class.java,
+            CharSequence::class.java,
+            List::class.java,
+        ) { param ->
+            val opt = param.args[0] as HasAnswerOption
+            val hasFilterText = param.args[1] as CharSequence
+            val filterAnswer = param.args[2] as CharSequence
+            val query = param.args[3] as List<QueryNode>
+
+            val replaceAndPublish = StoreSearchInput::class.java.getDeclaredMethod(
+                "replaceAndPublish",
+                Int::class.javaPrimitiveType!!,
+                List::class.java,
+                List::class.java
+            )
+            replaceAndPublish.isAccessible = true
+
+            val getAnswerReplacementStart = StoreSearchInput::class.java.getDeclaredMethod(
+                "getAnswerReplacementStart",
+                List::class.java,
+            )
+            getAnswerReplacementStart.isAccessible = true
+
+            logger.info(query.joinToString("|") { it.text })
+
+            val replacementIdx = getAnswerReplacementStart.invoke(this, query) as Int
+            val previousFilterText = query[replacementIdx]
+            val filterNode = if (previousFilterText.text == ssProvider.excludeFilterString)
+                FilterNode(FilterTypeExtension.EXCLUDE, ssProvider.excludeFilterString)
+            else
+                FilterNode(FilterType.HAS, hasFilterText)
+
+            replaceAndPublish.invoke(this, replacementIdx, listOf(filterNode, HasNode(opt, filterAnswer)), query)
         }
     }
 
@@ -296,6 +383,9 @@ class Scout : Plugin() {
                 DateNode.getDateRule(),
                 SortNode.getFilterRule(ssProvider.sortFilterString),
                 SortNode.getSortRule(ssProvider),
+                SimpleParserRule(Pattern.compile("^\\s*?${ssProvider.excludeFilterString}:", 64)) { _, _, obj ->
+                    ParseSpec(FilterNode(FilterTypeExtension.EXCLUDE, ssProvider.excludeFilterString), obj)
+                }
             ))
         }
     }
@@ -357,6 +447,14 @@ class Scout : Plugin() {
                     listOf(filterNode, SortNode(ssProvider.sortOldString)),
                     list
                 );
+
+            if (filter == FilterTypeExtension.EXCLUDE)
+                replaceAndPublish.invoke(this,
+                    lastIndex,
+                    listOf(filterNode),
+                    list
+                );
+
             param.result = null
         }
 
@@ -372,6 +470,8 @@ class Scout : Plugin() {
                 param.result = ContextCompat.getDrawable(context, ScoutResource.DRAWABLE_IC_CLOCK)
             if (type == FilterTypeExtension.SORT)
                 param.result = ContextCompat.getDrawable(context, ScoutResource.DRAWABLE_IC_SORT_WHITE)
+            if (type == FilterTypeExtension.EXCLUDE)
+                param.result = ContextCompat.getDrawable(context, ScoutResource.DRAWABLE_IC_SORT_WHITE)
         }
 
         // Patch for retrieving sample filter answer/placeholder
@@ -384,6 +484,8 @@ class Scout : Plugin() {
                 param.result = ssProvider.getIdentifier("search_answer_date")
             if (type == FilterTypeExtension.SORT)
                 param.result = ScoutResource.SORT_ANSWER
+            if (type == FilterTypeExtension.EXCLUDE)
+                param.result = ssProvider.getIdentifier("search_answer_has")
         }
 
         // Patch for retrieving filter name
@@ -393,6 +495,7 @@ class Scout : Plugin() {
         ) { param ->
             val type = param.args[0] as FilterType
             val res = when (type) {
+                FilterTypeExtension.EXCLUDE -> ScoutResource.EXCLUDE_FILTER
                 FilterTypeExtension.BEFORE -> ssProvider.getIdentifier("search_filter_before")
                 FilterTypeExtension.DURING -> ssProvider.getIdentifier("search_filter_during")
                 FilterTypeExtension.AFTER -> ssProvider.getIdentifier("search_filter_after")
@@ -417,6 +520,7 @@ class Scout : Plugin() {
                 val override = when (resID) {
                     ScoutResource.SORT_FILTER -> ssProvider.sortFilterString
                     ScoutResource.SORT_ANSWER -> ssProvider.sortOldString
+                    ScoutResource.EXCLUDE_FILTER -> ssProvider.excludeFilterString
                     else -> null
                 }
                 override?.let {

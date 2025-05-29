@@ -16,6 +16,7 @@ class ScoutSearchStringProvider(private val context: Context) {
         context.getString(getIdentifier(name))
 
     fun stringFor(type: FilterType) = when (type) {
+        FilterTypeExtension.EXCLUDE -> excludeFilterString
         FilterTypeExtension.BEFORE -> beforeFilterString
         FilterTypeExtension.DURING -> duringFilterString
         FilterTypeExtension.AFTER -> afterFilterString
@@ -46,4 +47,6 @@ class ScoutSearchStringProvider(private val context: Context) {
         get() = "poll"
     val hasForwardString: String
         get() = "forward"
+    val excludeFilterString: String
+        get() = "exclude"
 }
