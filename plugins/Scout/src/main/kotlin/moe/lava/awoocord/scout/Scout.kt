@@ -211,7 +211,6 @@ class Scout : Plugin() {
                 param.result = ssProvider.hasForwardString
         }
 
-        // private final String createHasAnswerRegex(SearchStringProvider searchStringProvider) {
         patcher.instead<QueryParser.Companion>(
             "createHasAnswerRegex",
             SearchStringProvider::class.java

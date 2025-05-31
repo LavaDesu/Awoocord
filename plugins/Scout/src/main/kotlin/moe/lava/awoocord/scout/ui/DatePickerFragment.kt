@@ -30,6 +30,6 @@ class DatePickerFragment(
     }
 
     override fun onDateSet(picker: DatePicker, year: Int, month: Int, day: Int) {
-        callback("%04d-%02d-%02d".format(year, month, day))
+        callback("%04d-%02d-%02d".format(year, month + 1, day))
     }
 }
