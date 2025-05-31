@@ -1,9 +1,25 @@
 package moe.lava.awoocord.scout.ui
 
-object ScoutResource {
-    const val SORT_FILTER = 0xfffffff0.toInt()
-    const val SORT_ANSWER = 0xfffffff1.toInt()
-    const val EXCLUDE_FILTER = 0xfffffff2.toInt()
-    const val DRAWABLE_IC_CLOCK = 0x7f0803bb
-    const val DRAWABLE_IC_SORT_WHITE =0x7f080586
+import android.content.res.Resources
+import androidx.annotation.DrawableRes
+import androidx.core.content.res.ResourcesCompat
+
+class ScoutResource(private val resources: Resources) {
+    companion object {
+        const val SORT_FILTER = 0xfffffff0.toInt()
+        const val SORT_ANSWER = 0xfffffff1.toInt()
+        const val EXCLUDE_FILTER = 0xfffffff2.toInt()
+    }
+
+    fun getId(name: String, type: String) =
+        resources.getIdentifier(name, type, "moe.lava.awoocord.scout")
+
+    @DrawableRes fun getDrawableId(name: String) =
+        getId(name, "drawable")
+
+    fun getDrawable(@DrawableRes id: Int) =
+        ResourcesCompat.getDrawable(resources, id, null)
+
+    fun getDrawable(name: String) =
+        getDrawable(getDrawableId(name))
 }

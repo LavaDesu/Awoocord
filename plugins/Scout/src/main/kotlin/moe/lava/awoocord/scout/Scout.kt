@@ -2,7 +2,7 @@ package moe.lava.awoocord.scout
 
 import android.content.Context
 import android.content.res.Resources
-import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import com.aliucord.Utils
 import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.entities.Plugin
@@ -11,6 +11,7 @@ import com.aliucord.patcher.after
 import com.aliucord.patcher.before
 import com.aliucord.patcher.instead
 import com.discord.BuildConfig
+import com.discord.databinding.WidgetSearchSuggestionsItemHasBinding
 import com.discord.restapi.RequiredHeadersInterceptor
 import com.discord.restapi.RequiredHeadersInterceptor.HeadersProvider
 import com.discord.restapi.RestAPIBuilder
@@ -19,6 +20,8 @@ import com.discord.simpleast.core.parser.Parser
 import com.discord.simpleast.core.parser.Rule
 import com.discord.stores.StoreSearch
 import com.discord.stores.StoreSearchInput
+import com.discord.utilities.mg_recycler.MGRecyclerDataPayload
+import com.discord.utilities.mg_recycler.SingleTypePayload
 import com.discord.utilities.rest.RestAPI.AppHeadersProvider
 import com.discord.utilities.search.network.`SearchFetcher$getRestObservable$3`
 import com.discord.utilities.search.network.SearchQuery
@@ -39,6 +42,7 @@ import com.discord.widgets.search.suggestions.WidgetSearchSuggestionsAdapter
 import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import com.franmontiel.persistentcookiejar.cache.SetCookieCache
 import com.franmontiel.persistentcookiejar.persistence.SharedPrefsCookiePersistor
+import com.lytefast.flexinput.R
 import moe.lava.awoocord.scout.api.SearchAPIInterface
 import moe.lava.awoocord.scout.parsing.DateNode
 import moe.lava.awoocord.scout.parsing.SimpleParserRule
@@ -52,10 +56,16 @@ import java.util.regex.Pattern
 @AliucordPlugin(requiresRestart = false)
 @Suppress("unused", "unchecked_cast")
 class Scout : Plugin() {
+    lateinit var scoutRes: ScoutResource
     lateinit var ssProvider: ScoutSearchStringProvider
     lateinit var searchApi: SearchAPIInterface
 
+    init {
+        needsResources = true
+    }
+
     override fun load(context: Context) {
+        scoutRes = ScoutResource(resources)
         ssProvider = ScoutSearchStringProvider(context)
         searchApi = buildSearchApi(context)
     }
@@ -213,15 +223,34 @@ class Scout : Plugin() {
         }
 
         // Patch to set icons
-        patcher.before<WidgetSearchSuggestionsAdapter.HasViewHolder.Companion>(
-            "getIconRes",
-            HasAnswerOption::class.java
+        patcher.before<WidgetSearchSuggestionsAdapter.HasViewHolder>(
+            "onConfigure",
+            Int::class.java,
+            MGRecyclerDataPayload::class.java,
         ) { param ->
-            val type = param.args[0] as HasAnswerOption
-            if (type == HasAnswerOptionExtension.POLL)
-                param.result = 0x7f08032e
-            else if (type == HasAnswerOptionExtension.SNAPSHOT)
-                param.result = 0x7f08032e
+            val suggestion = (param.args[1] as SingleTypePayload<HasSuggestion>).data
+            val option = suggestion.hasAnswerOption
+
+            val resID = when (option) {
+                HasAnswerOptionExtension.POLL -> "baseline_poll_24"
+                HasAnswerOptionExtension.SNAPSHOT -> "baseline_forward_to_inbox_24"
+                else -> null
+            }
+
+            resID?.let {
+                val bindingField = this::class.java.getDeclaredField("binding")
+                bindingField.isAccessible = true
+                val binding = bindingField.get(this) as WidgetSearchSuggestionsItemHasBinding
+
+                binding.d.text = option.getLocalizedInputText(null)
+                binding.b.setOnClickListener {
+                    WidgetSearchSuggestionsAdapter.HasViewHolder.`access$getAdapter$p`(this).onHasClicked.invoke(option)
+                }
+
+                binding.c.setImageDrawable(scoutRes.getDrawable(it))
+
+                param.result = null
+            }
         }
 
         patcher.instead<SearchSuggestionEngine>(
@@ -466,12 +495,19 @@ class Scout : Plugin() {
             FilterType::class.java
         ) { param ->
             val type = param.args[1] as FilterType
-            if (type in FilterTypeExtension.dates)
-                param.result = ContextCompat.getDrawable(context, ScoutResource.DRAWABLE_IC_CLOCK)
-            if (type == FilterTypeExtension.SORT)
-                param.result = ContextCompat.getDrawable(context, ScoutResource.DRAWABLE_IC_SORT_WHITE)
-            if (type == FilterTypeExtension.EXCLUDE)
-                param.result = ContextCompat.getDrawable(context, ScoutResource.DRAWABLE_IC_SORT_WHITE)
+            val (isDiscord, resID) = when (type) {
+                FilterTypeExtension.BEFORE -> true to R.e.ic_history_white_24dp
+                FilterTypeExtension.DURING -> false to scoutRes.getDrawableId("baseline_clock_24")
+                FilterTypeExtension.AFTER -> false to scoutRes.getDrawableId("baseline_update_24")
+                FilterTypeExtension.SORT -> true to R.e.ic_sort_white_24dp
+                FilterTypeExtension.EXCLUDE -> false to scoutRes.getDrawableId("baseline_do_disturb_on_24")
+                else -> false to null
+            }
+
+            resID?.let {
+                val res = if (isDiscord) context.resources else resources
+                param.result = ResourcesCompat.getDrawable(res, it, null)
+            }
         }
 
         // Patch for retrieving sample filter answer/placeholder
