@@ -1,9 +1,12 @@
-version = "1.1.0"
+version = "1.1.1"
 description = "Backported and improved search functionality"
 
 aliucord {
     // Changelog of your plugin
     changelog.set("""
+        # 1.1.1
+        * Use proper icons for search filter suggestions
+
         # 1.1.0 - Look out, Scout has:updates
         * Add "has:forward" and "has:poll" filters
         * Add "exclude:" filter. It is the opposite of "has:" and filters out matching elements
