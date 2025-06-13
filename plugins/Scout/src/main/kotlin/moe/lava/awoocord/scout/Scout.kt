@@ -53,7 +53,7 @@ import moe.lava.awoocord.scout.ui.ScoutResource
 import moe.lava.awoocord.scout.ui.ScoutSearchStringProvider
 import java.util.regex.Pattern
 
-@AliucordPlugin(requiresRestart = false)
+@AliucordPlugin(requiresRestart = true)
 @Suppress("unused", "unchecked_cast")
 class Scout : Plugin() {
     lateinit var scoutRes: ScoutResource
