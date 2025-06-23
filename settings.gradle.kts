@@ -5,6 +5,7 @@ rootProject.name = "Awoocord"
 
 // Plugins are included like this
 include(
+    "AlignThreads",
     "Scout"
 )
 
