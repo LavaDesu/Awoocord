@@ -14,7 +14,7 @@ import com.aliucord.utils.DimenUtils
 import com.discord.widgets.chat.list.actions.`WidgetChatListActions$binding$2`
 import com.lytefast.flexinput.R
 
-@AliucordPlugin(requiresRestart = false)
+@AliucordPlugin(requiresRestart = true)
 @Suppress("unused")
 class AlignThreads : Plugin() {
     override fun start(ctx: Context) {
