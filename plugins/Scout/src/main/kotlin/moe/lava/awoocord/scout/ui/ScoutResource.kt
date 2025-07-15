@@ -1,14 +1,15 @@
 package moe.lava.awoocord.scout.ui
 
 import android.content.res.Resources
+import android.view.View
 import androidx.annotation.DrawableRes
 import androidx.core.content.res.ResourcesCompat
 
 class ScoutResource(private val resources: Resources) {
     companion object {
-        const val SORT_FILTER = 0xfffffff0.toInt()
-        const val SORT_ANSWER = 0xfffffff1.toInt()
-        const val EXCLUDE_FILTER = 0xfffffff2.toInt()
+        val SORT_FILTER = View.generateViewId()
+        val SORT_ANSWER = View.generateViewId()
+        val EXCLUDE_FILTER = View.generateViewId()
     }
 
     fun getId(name: String, type: String) =
