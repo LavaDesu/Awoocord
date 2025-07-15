@@ -1,6 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-version = "7.15.0-8ee06ba"
+version = "7.15.0"
 description = "Beta backport of ComponentsV2"
 
 aliucord {
