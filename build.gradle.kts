@@ -34,7 +34,7 @@ subprojects {
     apply(plugin = "kotlin-android")
 
     aliucord {
-        author("lavadesu", 368398754077868032L)
+        author("Lava", 368398754077868032L)
         updateUrl.set("https://raw.githubusercontent.com/LavaDesu/Awoocord/builds/updater.json")
         buildUrl.set("https://raw.githubusercontent.com/LavaDesu/Awoocord/builds/%s.zip")
     }
