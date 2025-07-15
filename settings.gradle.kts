@@ -1,15 +1,17 @@
 rootProject.name = "Awoocord"
 
-// This file sets what projects are included. Every time you add a new project, you must add it
-// to the includes below.
+val canaryPlugins = arrayOf("ComponentsV2")
 
-// Plugins are included like this
 include(
     "AlignThreads",
-    "Scout"
+    "Scout",
+    *canaryPlugins,
 )
 
 rootProject.children.forEach {
-    // Change kotlin to java if you'd rather use java
-    it.projectDir = file("plugins/${it.name}")
+    val isCanary = it.name in canaryPlugins
+    val dir = if (isCanary) "canary" else "plugins"
+    val name = it.name
+    if (isCanary) it.name += "-Beta"
+    it.projectDir = file("${dir}/${name}")
 }

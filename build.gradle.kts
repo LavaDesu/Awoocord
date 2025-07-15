@@ -6,6 +6,7 @@ buildscript {
         google()
         mavenCentral()
         maven("https://maven.aliucord.com/snapshots")
+        gradlePluginPortal() // remove when gradle 8
         maven("https://jitpack.io")
     }
 
@@ -13,6 +14,8 @@ buildscript {
         classpath("com.android.tools.build:gradle:7.1.3")
         classpath("com.aliucord:gradle:main-SNAPSHOT")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.5.21")
+//        classpath("com.gradleup.shadow:shadow-gradle-plugin:8.3.8")
+        classpath("com.github.johnrengelman.shadow:com.github.johnrengelman.shadow.gradle.plugin:7.1.2") // For Gradle 7 compat
     }
 }
 
