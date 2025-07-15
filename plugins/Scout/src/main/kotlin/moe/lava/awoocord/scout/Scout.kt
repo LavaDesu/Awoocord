@@ -6,18 +6,13 @@ import androidx.core.content.res.ResourcesCompat
 import com.aliucord.Utils
 import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.entities.Plugin
-import com.aliucord.patcher.PreHook
-import com.aliucord.patcher.after
-import com.aliucord.patcher.before
-import com.aliucord.patcher.instead
+import com.aliucord.patcher.*
 import com.discord.BuildConfig
 import com.discord.databinding.WidgetSearchSuggestionsItemHasBinding
 import com.discord.restapi.RequiredHeadersInterceptor
 import com.discord.restapi.RequiredHeadersInterceptor.HeadersProvider
 import com.discord.restapi.RestAPIBuilder
-import com.discord.simpleast.core.parser.ParseSpec
-import com.discord.simpleast.core.parser.Parser
-import com.discord.simpleast.core.parser.Rule
+import com.discord.simpleast.core.parser.*
 import com.discord.stores.StoreSearch
 import com.discord.stores.StoreSearchInput
 import com.discord.utilities.mg_recycler.MGRecyclerDataPayload
@@ -34,9 +29,7 @@ import com.discord.utilities.search.query.node.filter.FilterNode
 import com.discord.utilities.search.query.parsing.QueryParser
 import com.discord.utilities.search.strings.SearchStringProvider
 import com.discord.utilities.search.suggestion.SearchSuggestionEngine
-import com.discord.utilities.search.suggestion.entries.FilterSuggestion
-import com.discord.utilities.search.suggestion.entries.HasSuggestion
-import com.discord.utilities.search.suggestion.entries.SearchSuggestion
+import com.discord.utilities.search.suggestion.entries.*
 import com.discord.utilities.search.validation.SearchData
 import com.discord.widgets.search.suggestions.WidgetSearchSuggestionsAdapter
 import com.franmontiel.persistentcookiejar.PersistentCookieJar
@@ -44,16 +37,11 @@ import com.franmontiel.persistentcookiejar.cache.SetCookieCache
 import com.franmontiel.persistentcookiejar.persistence.SharedPrefsCookiePersistor
 import com.lytefast.flexinput.R
 import moe.lava.awoocord.scout.api.SearchAPIInterface
-import moe.lava.awoocord.scout.parsing.DateNode
-import moe.lava.awoocord.scout.parsing.SimpleParserRule
-import moe.lava.awoocord.scout.parsing.SortNode
-import moe.lava.awoocord.scout.parsing.UserIdNode
-import moe.lava.awoocord.scout.ui.DatePickerFragment
-import moe.lava.awoocord.scout.ui.ScoutResource
-import moe.lava.awoocord.scout.ui.ScoutSearchStringProvider
+import moe.lava.awoocord.scout.parsing.*
+import moe.lava.awoocord.scout.ui.*
 import java.util.regex.Pattern
 
-@AliucordPlugin(requiresRestart = true)
+@AliucordPlugin()
 @Suppress("unused", "unchecked_cast")
 class Scout : Plugin() {
     lateinit var scoutRes: ScoutResource
