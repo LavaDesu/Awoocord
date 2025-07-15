@@ -1,10 +1,13 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-version = "7.16.0"
+version = "7.16.1"
 description = "Beta backport of SlashCommandsFix"
 
 aliucord {
     changelog.set("""
+        # 7.16.1
+        * Prompt restarts
+
         # 7.16.0
         * Initial port >w< thanks @jedenastka
     """.trimIndent())

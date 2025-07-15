@@ -13,7 +13,7 @@ import com.aliucord.entities.Plugin;
 
 import de.robv.android.xposed.XposedBridge;
 
-@AliucordPlugin
+@AliucordPlugin(requiresRestart = true)
 public final class SlashCommandsFix extends Plugin {
     public SlashCommandsFix() {
         super();
