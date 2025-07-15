@@ -1,6 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-version = "7.15.0"
+version = "7.15.1"
 description = "Beta backport of ComponentsV2"
 
 aliucord {
@@ -14,6 +14,9 @@ aliucord {
         
         Changelog {added marginTop}
         ======================
+        # 7.15.1
+        * Fix broken reply preview >w<
+
         # 7.15.0
         * Initial release >w<
     """.trimIndent())

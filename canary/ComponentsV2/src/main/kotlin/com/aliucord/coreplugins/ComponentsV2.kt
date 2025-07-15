@@ -19,6 +19,7 @@ import com.discord.api.botuikit.gson.ComponentRuntimeTypeAdapter
 import com.discord.api.botuikit.gson.ComponentTypeTypeAdapter
 import com.discord.api.message.attachment.MessageAttachment
 import com.discord.models.botuikit.*
+import com.discord.models.message.Message
 import com.discord.stores.StoreApplicationInteractions.InteractionSendState
 import com.discord.utilities.view.extensions.ViewExtensions
 import com.discord.widgets.botuikit.*
@@ -32,6 +33,8 @@ import com.google.gson.stream.JsonReader
 import com.lytefast.flexinput.R
 import de.robv.android.xposed.XposedBridge
 import java.io.File
+
+val Message.isComponentV2 get() = (flags shr 15) and 1 == 1L
 
 @AliucordPlugin(requiresRestart = true)
 @Suppress("unused")
@@ -193,6 +196,10 @@ class ComponentsV2 : Plugin() {
                     SelectV2MessageComponent.mergeToMessageComponent(actionComponent, index, comState, componentStoreState)
                 else -> null
             }
+        }
+
+        patcher.after<Message>("shouldShowReplyPreviewAsAttachment") { param ->
+            if (this.isComponentV2) param.result = true
         }
     }
 
