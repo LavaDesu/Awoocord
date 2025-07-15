@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.constraintlayout.widget.ConstraintLayout
+import com.aliucord.Constants
 import com.aliucord.Utils
 import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.coreplugins.componentsv2.ComponentV2Type
@@ -30,6 +31,7 @@ import com.discord.widgets.chat.list.entries.BotUiComponentEntry
 import com.google.gson.stream.JsonReader
 import com.lytefast.flexinput.R
 import de.robv.android.xposed.XposedBridge
+import java.io.File
 
 @AliucordPlugin(requiresRestart = true)
 @Suppress("unused")
@@ -64,6 +66,14 @@ class ComponentsV2 : Plugin() {
     }
 
     override fun start(context: Context) {
+        val oldFile = File("${Constants.PLUGINS_PATH}/ComponentsV2-Beta.zip")
+        if (oldFile.exists()) {
+            logger.info("old plugin found, deleting and prompting restart")
+            oldFile.delete()
+            Utils.promptRestart()
+            return
+        }
+
         XposedBridge.makeClassInheritable(BotUiComponentEntry::class.java)
         ComponentV2Type.make()
         patchGson()
