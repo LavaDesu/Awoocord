@@ -1,11 +1,11 @@
-version = "1.1.2"
+version = "1.1.3"
 description = "Backported and improved search functionality"
 
 aliucord {
     // Changelog of your plugin
     changelog.set("""
         # 1.1.3
-        * Require restarts on plugin changes
+        * Patch to fix the biggggg top padding in results
 
         # 1.1.2
         * Fix month being one month behind after using the date picker
