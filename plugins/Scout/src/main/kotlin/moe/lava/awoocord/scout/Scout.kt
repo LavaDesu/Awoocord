@@ -2,11 +2,13 @@ package moe.lava.awoocord.scout
 
 import android.content.Context
 import android.content.res.Resources
+import android.view.View
 import androidx.core.content.res.ResourcesCompat
 import com.aliucord.Utils
 import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.entities.Plugin
 import com.aliucord.patcher.*
+import com.aliucord.utils.DimenUtils.dp
 import com.discord.BuildConfig
 import com.discord.databinding.WidgetSearchSuggestionsItemHasBinding
 import com.discord.restapi.RequiredHeadersInterceptor
@@ -31,6 +33,8 @@ import com.discord.utilities.search.strings.SearchStringProvider
 import com.discord.utilities.search.suggestion.SearchSuggestionEngine
 import com.discord.utilities.search.suggestion.entries.*
 import com.discord.utilities.search.validation.SearchData
+import com.discord.widgets.search.results.WidgetSearchResults
+import com.discord.widgets.search.suggestions.WidgetSearchSuggestions
 import com.discord.widgets.search.suggestions.WidgetSearchSuggestionsAdapter
 import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import com.franmontiel.persistentcookiejar.cache.SetCookieCache
@@ -66,6 +70,7 @@ class Scout : Plugin() {
         patchQuery()
         patchQueryParser()
         patchSearchUI(context)
+        patchSearchPadding()
     }
 
     override fun stop(context: Context) {
@@ -573,6 +578,23 @@ class Scout : Plugin() {
                     res.add(FilterSuggestion(type))
             }
             param.result = res.toList()
+        }
+    }
+
+    // Patch out the gigantic padding in search results
+    private fun patchSearchPadding() {
+        patcher.after<WidgetSearchResults>("onViewBound", View::class.java) {
+            view?.run {
+                fitsSystemWindows = false
+                setPadding(paddingLeft, 16.dp, paddingRight, paddingBottom)
+            }
+        }
+
+        patcher.after<WidgetSearchSuggestions>("onViewBound", View::class.java) {
+            view?.run {
+                fitsSystemWindows = false
+                setPadding(paddingLeft, 16.dp, paddingRight, paddingBottom)
+            }
         }
     }
 }
