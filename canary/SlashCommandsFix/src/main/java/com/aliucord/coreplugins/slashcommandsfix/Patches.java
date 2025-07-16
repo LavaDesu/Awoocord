@@ -7,6 +7,8 @@
 package com.aliucord.coreplugins.slashcommandsfix;
 
 import android.content.Context;
+import android.util.Base64;
+
 import com.aliucord.api.GatewayAPI;
 import com.aliucord.Http;
 import com.aliucord.Logger;
@@ -15,6 +17,7 @@ import com.aliucord.patcher.Patcher;
 import com.aliucord.patcher.PreHook;
 import com.aliucord.Utils;
 import com.aliucord.utils.GsonUtils;
+import com.aliucord.utils.RNSuperProperties;
 import com.discord.api.channel.Channel;
 import com.discord.models.commands.Application;
 import com.discord.models.commands.ApplicationCommand;
@@ -270,9 +273,19 @@ final class Patches {
         var applicationIndex = source.getFromCache(applicationIndexCache);
         if (!applicationIndex.isPresent()) {
             try {
+                var versionCode = 218111;
+                var versionString = "218.11 - rn";
+                var userAgent = "Discord-Android/218111;RNA";
+                var props = RNSuperProperties.getSuperProperties()
+                    .put("client_version", versionString)
+                    .put("client_build_number", versionCode);
+                var props64 = Base64.encodeToString(props.toString().getBytes(), 2);
+
                 // Request application index from API
                 applicationIndex = Optional.of(
                     Http.Request.newDiscordRNRequest(source.getEndpoint())
+                        .setHeader("User-Agent", userAgent)
+                        .setHeader("X-Super-Properties", props64)
                         .execute()
                         .json(GsonUtils.getGsonRestApi(), ApiApplicationIndex.class)
                         .toModel()

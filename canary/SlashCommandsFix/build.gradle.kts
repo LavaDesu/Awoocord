@@ -1,10 +1,13 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-version = "7.16.1"
+version = "7.16.2"
 description = "Beta backport of SlashCommandsFix"
 
 aliucord {
     changelog.set("""
+        # 7.16.2
+        * Use new props
+
         # 7.16.1
         * Prompt restarts
 
