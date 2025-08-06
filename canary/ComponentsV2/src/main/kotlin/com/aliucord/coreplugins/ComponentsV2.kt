@@ -4,7 +4,6 @@ import android.content.Context
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.constraintlayout.widget.ConstraintLayout
-import com.aliucord.Constants
 import com.aliucord.Utils
 import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.coreplugins.componentsv2.ComponentV2Type
@@ -13,11 +12,7 @@ import com.aliucord.coreplugins.componentsv2.patchMessageItems
 import com.aliucord.coreplugins.componentsv2.views.*
 import com.aliucord.entities.Plugin
 import com.aliucord.patcher.*
-import com.aliucord.utils.ReflectUtils
 import com.discord.api.botuikit.*
-import com.discord.api.botuikit.gson.ComponentRuntimeTypeAdapter
-import com.discord.api.botuikit.gson.ComponentTypeTypeAdapter
-import com.discord.api.message.attachment.MessageAttachment
 import com.discord.models.botuikit.*
 import com.discord.models.message.Message
 import com.discord.stores.StoreApplicationInteractions.InteractionSendState
@@ -29,57 +24,17 @@ import com.discord.widgets.botuikit.views.select.SelectComponentView
 import com.discord.widgets.chat.list.adapter.WidgetChatListAdapter
 import com.discord.widgets.chat.list.adapter.WidgetChatListAdapterItemBotComponentRow
 import com.discord.widgets.chat.list.entries.BotUiComponentEntry
-import com.google.gson.stream.JsonReader
 import com.lytefast.flexinput.R
 import de.robv.android.xposed.XposedBridge
-import java.io.File
 
 val Message.isComponentV2 get() = (flags shr 15) and 1 == 1L
 
 @AliucordPlugin(requiresRestart = true)
 @Suppress("unused")
 class ComponentsV2 : Plugin() {
-    companion object {
-        /** Creates a new [MessageAttachment] */
-        fun createAttachment(
-            filename: String,
-            filesize: Long,
-            proxyUrl: String,
-            url: String,
-            width: Int,
-            height: Int,
-        ): MessageAttachment {
-            val inst = ReflectUtils.allocateInstance(clazz)
-            filenameField.set(inst, filename)
-            filesizeField.set(inst, filesize)
-            proxyUrlField.set(inst, proxyUrl)
-            urlField.set(inst, url)
-            widthField.set(inst, width)
-            heightField.set(inst, height)
-            return inst
-        }
-
-        private val clazz = MessageAttachment::class.java
-        private val filenameField = clazz.getDeclaredField("filename").apply { isAccessible = true }
-        private val filesizeField = clazz.getDeclaredField("size").apply { isAccessible = true }
-        private val proxyUrlField = clazz.getDeclaredField("proxyUrl").apply { isAccessible = true }
-        private val urlField = clazz.getDeclaredField("url").apply { isAccessible = true }
-        private val widthField = clazz.getDeclaredField("width").apply { isAccessible = true }
-        private val heightField = clazz.getDeclaredField("height").apply { isAccessible = true }
-    }
-
     override fun start(context: Context) {
-        val oldFile = File("${Constants.PLUGINS_PATH}/ComponentsV2-Beta.zip")
-        if (oldFile.exists()) {
-            logger.info("old plugin found, deleting and prompting restart")
-            oldFile.delete()
-            Utils.promptRestart()
-            return
-        }
-
+        compat(patcher)
         XposedBridge.makeClassInheritable(BotUiComponentEntry::class.java)
-        ComponentV2Type.make()
-        patchGson()
         // https://github.com/LSPosed/LSPlant/issues/41
         patchMessageItems(patcher)
 
@@ -205,32 +160,6 @@ class ComponentsV2 : Plugin() {
 
     override fun stop(context: Context) {
         patcher.unpatchAll()
-        unpatchGson()
-        ComponentV2Type.unmake(logger)
-    }
-
-    private fun patchGson() {
-        val factory = ComponentRuntimeTypeAdapter.INSTANCE.a()
-        val typeToClass = factory.l
-        val classToType = factory.m
-        ComponentV2Type.newValues?.forEach {
-            typeToClass[it.type.toString()] = it.clazz
-            classToType[it.clazz] = it.type.toString()
-        }
-
-        patcher.instead<ComponentTypeTypeAdapter>("read", JsonReader::class.java)
-        { (_, jsonReader: JsonReader) ->
-            val type: Int = b.c.a.a0.d.n1(jsonReader)
-            ComponentType.values().find { it.type == type } ?: ComponentType.UNKNOWN
-        }
-    }
-    private fun unpatchGson() {
-        val factory = ComponentRuntimeTypeAdapter.INSTANCE.a()
-        val typeToClass = factory.l
-        val classToType = factory.m
-        ComponentV2Type.newValues?.forEach {
-            typeToClass.remove(it.type.toString())
-            classToType.remove(it.clazz)
-        }
+        stopCompat()
     }
 }
