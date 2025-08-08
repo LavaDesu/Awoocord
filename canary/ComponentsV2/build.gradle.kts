@@ -1,6 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-version = "8.7.0"
+version = "8.8.0"
 description = "Beta backport of ComponentsV2"
 
 aliucord {
@@ -14,6 +14,9 @@ aliucord {
         
         Changelog {added marginTop}
         ======================
+        # 8.8.0
+        * Fix a possible weird crash
+
         # 8.7.0
         * Prevent ViewRaw crash
         * Add a CV2 tag to distinguish new embeds (will not be in core)

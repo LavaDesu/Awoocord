@@ -27,7 +27,7 @@ import com.discord.widgets.chat.list.entries.BotUiComponentEntry
 import com.lytefast.flexinput.R
 import de.robv.android.xposed.XposedBridge
 
-val Message.isComponentV2 get() = (flags shr 15) and 1 == 1L
+val Message.isComponentV2 get() = ((flags ?: 0) shr 15) and 1 == 1L
 
 @AliucordPlugin(requiresRestart = true)
 @Suppress("unused")
