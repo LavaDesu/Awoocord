@@ -1,10 +1,13 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-version = "7.16.2"
+version = "8.18.0"
 description = "Beta backport of SlashCommandsFix"
 
 aliucord {
     changelog.set("""
+        # 8.18.0
+        * Don't use custom props anymore (core has them)
+
         # 7.16.2
         * Use new props
 
