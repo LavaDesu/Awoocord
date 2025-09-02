@@ -3,7 +3,6 @@ rootProject.name = "Awoocord"
 val canaryPlugins = arrayOf("ComponentsV2", "SlashCommandsFix")
 
 include(
-    "AlignThreads",
     "Scout",
     *canaryPlugins,
 )
