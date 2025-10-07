@@ -52,12 +52,8 @@ class Scout : Plugin() {
     lateinit var ssProvider: ScoutSearchStringProvider
     lateinit var searchApi: SearchAPIInterface
 
-    init {
-        needsResources = true
-    }
-
     override fun load(context: Context) {
-        scoutRes = ScoutResource(resources)
+        scoutRes = ScoutResource(resources!!)
         ssProvider = ScoutSearchStringProvider(context)
         searchApi = buildSearchApi(context)
     }
@@ -497,7 +493,7 @@ class Scout : Plugin() {
             }
 
             resID?.let {
-                val res = if (isDiscord) context.resources else resources
+                val res = if (isDiscord) context.resources else resources!!
                 param.result = ResourcesCompat.getDrawable(res, it, null)
             }
         }
