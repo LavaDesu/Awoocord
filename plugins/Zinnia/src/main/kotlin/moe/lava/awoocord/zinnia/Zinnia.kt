@@ -82,10 +82,16 @@ class Zinnia : Plugin() {
         }
         view.setPadding(4.dp, 0, 4.dp, 0)
 
-        val (preferred, other) = if (isLight) {
+        var (preferred, other) = if (isLight) {
             Color.WHITE to Color.BLACK
         } else {
             Color.BLACK to Color.WHITE
+        }
+        when (localSettings.blockMode) {
+            BlockMode.InvertedThemeOnly -> preferred = other
+            BlockMode.WhiteOnly -> preferred = Color.WHITE
+            BlockMode.BlackOnly -> preferred = Color.BLACK
+            else -> {}
         }
 
         val colours = if (!localSettings.blockInverted) {
@@ -109,6 +115,10 @@ class Zinnia : Plugin() {
             BlockMode.WcagOnly -> isWcag(colours)
             BlockMode.ApcaLightWcagDark -> if (isLight) isApca(colours) else isWcag(colours)
             BlockMode.WcagLightApcaDark -> if (isLight) isWcag(colours) else isApca(colours)
+            BlockMode.ThemeOnly,
+            BlockMode.InvertedThemeOnly,
+            BlockMode.WhiteOnly,
+            BlockMode.BlackOnly -> true
         }
 
         if (usePreferred) {

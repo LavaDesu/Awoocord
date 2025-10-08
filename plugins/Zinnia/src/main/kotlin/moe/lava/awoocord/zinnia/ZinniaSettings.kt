@@ -7,6 +7,7 @@ import com.aliucord.api.SettingsAPI
 import com.aliucord.fragments.SettingsPage
 import com.aliucord.settings.delegate
 import com.discord.views.CheckedSetting
+import com.discord.views.RadioManager
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
@@ -20,6 +21,10 @@ enum class BlockMode {
     WcagLightApcaDark,
     ApcaOnly,
     WcagOnly,
+    ThemeOnly,
+    InvertedThemeOnly,
+    WhiteOnly,
+    BlackOnly,
 }
 
 class SettingsDelegateEnum<T : Enum<T>>(
@@ -59,8 +64,23 @@ object ZinniaSettings {
 
     @Suppress("MISSING_DEPENDENCY_CLASS", "MISSING_DEPENDENCY_SUPERCLASS")
     class Page : SettingsPage() {
+        private lateinit var manager: RadioManager
         private lateinit var mRoleDot: CheckedSetting
         private lateinit var mBlock: CheckedSetting
+
+        private val checks = mutableListOf<CheckedSetting>()
+
+        private fun createRadio(newMode: BlockMode, text: String, subtext: String? = null): CheckedSetting {
+            return Utils.createCheckedSetting(requireContext(), CheckedSetting.ViewType.RADIO, text, subtext).addTo(linearLayout) {
+                isChecked = blockMode == newMode
+                setOnCheckedListener {
+                    for (check in checks) check.isChecked = false
+                    blockMode = newMode
+                    isChecked = true
+                }
+                checks.add(this)
+            }
+        }
 
         override fun onViewBound(view: View) {
             super.onViewBound(view)
@@ -71,6 +91,13 @@ object ZinniaSettings {
             linearLayout.run {
                 val blockSettings = mutableListOf<CheckedSetting>()
                 val roleDotSettings = mutableListOf<CheckedSetting>()
+
+                addHeader(ctx, "Text colour")
+                createRadio(BlockMode.ApcaLightWcagDark, "Automatic", "Adjusts text colour based on role colour")
+                createRadio(BlockMode.ThemeOnly, "By theme", "Adjusts text colour based on theme")
+                createRadio(BlockMode.InvertedThemeOnly, "By theme (inverted)", "Same as above, but inverted")
+                createRadio(BlockMode.WhiteOnly, "White", "Force text colour to be white")
+                createRadio(BlockMode.BlackOnly, "Black", "Force text colour to be black")
 
                 /*
                 addHeader(ctx, "Mode")
