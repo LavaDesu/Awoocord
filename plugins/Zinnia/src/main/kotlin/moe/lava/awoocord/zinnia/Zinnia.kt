@@ -14,6 +14,8 @@ import com.aliucord.utils.DimenUtils.dp
 import com.aliucord.utils.ViewUtils.findViewById
 import com.aliucord.utils.accessField
 import com.discord.databinding.WidgetChannelMembersListItemUserBinding
+import com.discord.models.member.GuildMember
+import com.discord.models.user.User
 import com.discord.stores.StoreStream
 import com.discord.widgets.channels.memberlist.adapter.ChannelMembersListAdapter
 import com.discord.widgets.channels.memberlist.adapter.ChannelMembersListViewHolderMember
@@ -24,6 +26,10 @@ import kotlin.math.abs
 
 private val ChannelMembersListViewHolderMember.binding
         by accessField<WidgetChannelMembersListItemUserBinding>()
+private val WidgetChatListAdapterItemMessage.itemName
+        by accessField<TextView?>()
+private val WidgetChatListAdapterItemMessage.replyName
+        by accessField<TextView?>()
 
 data class Colours(
     val fgP: Int,
@@ -154,20 +160,17 @@ class Zinnia : Plugin() {
             Int::class.javaPrimitiveType!!,
             ChatListEntry::class.java,
         ) { (_, _: Int, entry: MessageEntry) ->
-            val username = itemView.findViewById<TextView?>("chat_list_adapter_item_text_name")
-                ?: return@after
-            configureOn(username, entry.author?.color)
+            itemName?.let { configureOn(it, entry.author?.color) }
         }
 
         // Configures for reply preview username
         patcher.after<WidgetChatListAdapterItemMessage>(
-            "configureReplyPreview",
+            "configureReplyAuthor",
+            User::class.java,
+            GuildMember::class.java,
             MessageEntry::class.java,
-        ) { (_, entry: MessageEntry) ->
-            val referencedAuthor = entry.replyData?.messageEntry?.author
-            val replyUsername = itemView.findViewById<TextView?>("chat_list_adapter_item_text_decorator_reply_name")
-                ?: return@after
-            configureOn(replyUsername, referencedAuthor?.color)
+        ) { (_, _: User, member: GuildMember) ->
+            replyName?.let { configureOn(it, member.color) }
         }
     }
 }
