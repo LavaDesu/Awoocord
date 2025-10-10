@@ -1,9 +1,12 @@
-version = "1.1.0"
+version = "1.1.1"
 description = "Coloured usernames to be a bit more pleasing on the eyes"
 
 aliucord {
     // Changelog of your plugin
     changelog.set("""
+        # 1.1.1
+        * Revert incorrect spacing fix, since it just breaks replies. Proper fix soon
+
         # 1.1.0
         * Fix incorrect spacing in replies
         * Allow setting static text colours
