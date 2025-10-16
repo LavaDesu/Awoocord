@@ -1,10 +1,14 @@
-version = "1.2.0"
+version = "1.2.1"
 description = "Backported and improved search functionality"
 
 aliucord {
     // Changelog of your plugin
     changelog.set("""
-        # 1.2.0
+        # 1.2.1
+        * Fixes off-looking thread icon
+        Only Discord will name an icon "thread_white_24dp", and it's neither white nor 24dp. Seriously, what were they thinking?
+
+        # 1.2.0 - Scout is in:to knitting
         * Adds support for searching threads; simply use in:
 
         # 1.1.3
