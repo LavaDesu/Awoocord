@@ -1,9 +1,12 @@
-version = "1.1.3"
+version = "1.2.0"
 description = "Backported and improved search functionality"
 
 aliucord {
     // Changelog of your plugin
     changelog.set("""
+        # 1.2.0
+        * Adds support for searching threads; simply use in:
+
         # 1.1.3
         * Patch to fix the biggggg top padding in results
 
