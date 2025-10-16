@@ -693,7 +693,7 @@ class Scout : Plugin() {
             StoreStream.getChannels().getChannel(payload.data.channelId)?.let {
                 if (ChannelUtils.H(it)) {
                     itemView.findViewById<ImageView>("search_suggestions_item_channel_icon")
-                        .setImageResource(R.e.ic_thread_white_24dp)
+                        .setImageDrawable(scoutRes.getDrawable("ic_thread_actually_white_24dp"))
                 }
             }
         }
