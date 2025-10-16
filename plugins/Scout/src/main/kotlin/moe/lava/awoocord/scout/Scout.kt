@@ -674,7 +674,9 @@ class Scout : Plugin() {
             "compare",
             Object::class.java, // ?? :sob:
             Object::class.java,
-        ) { (param, ch1: Channel, ch2: Channel) ->
+        ) { (param, ch1: Channel?, ch2: Channel?) ->
+            if (ch1 == null || ch2 == null) return@before
+
             // ChannelUtils.H <=> ChannelUtils.isThread
             if (ChannelUtils.H(ch1) && !ChannelUtils.H(ch2)) {
                 param.result = 1
