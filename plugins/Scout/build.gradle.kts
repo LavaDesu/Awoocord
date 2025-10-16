@@ -4,12 +4,22 @@ description = "Backported and improved search functionality"
 aliucord {
     // Changelog of your plugin
     changelog.set("""
+        !!! Minimum Aliucord version requirement {fixed}
+        ======================
+        * Scout now requires Aliucord 2.4.0, please update before reporting issues.
+
+        Changelog {added marginTop}
+        ======================
+        # 1.2.2
+        * Fix possible rare crash related to thread searching
+
         # 1.2.1
         * Fixes off-looking thread icon
         Only Discord will name an icon "thread_white_24dp", and it's neither white nor 24dp. Seriously, what were they thinking?
 
         # 1.2.0 - Scout is in:to knitting
         * Adds support for searching threads; simply use in:
+        * !!! Scout now requires Aliucord 2.4.0, please update before reporting issues
 
         # 1.1.3
         * Patch to fix the biggggg top padding in results
