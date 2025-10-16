@@ -3,20 +3,31 @@ package moe.lava.awoocord.scout
 import android.content.Context
 import android.content.res.Resources
 import android.view.View
+import android.widget.ImageView
 import androidx.core.content.res.ResourcesCompat
 import com.aliucord.Utils
 import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.entities.Plugin
 import com.aliucord.patcher.*
 import com.aliucord.utils.DimenUtils.dp
+import com.aliucord.utils.ViewUtils.findViewById
+import com.aliucord.wrappers.ChannelWrapper.Companion.id
+import com.aliucord.wrappers.ChannelWrapper.Companion.type
 import com.discord.BuildConfig
+import com.discord.api.channel.Channel
+import com.discord.api.channel.ChannelUtils
+import com.discord.api.channel.`ChannelUtils$getSortByNameAndType$1`
+import com.discord.api.permission.Permission
 import com.discord.databinding.WidgetSearchSuggestionsItemHasBinding
+import com.discord.models.member.GuildMember
+import com.discord.models.user.User
 import com.discord.restapi.RequiredHeadersInterceptor
 import com.discord.restapi.RequiredHeadersInterceptor.HeadersProvider
 import com.discord.restapi.RestAPIBuilder
 import com.discord.simpleast.core.parser.*
 import com.discord.stores.StoreSearch
 import com.discord.stores.StoreSearchInput
+import com.discord.stores.StoreStream
 import com.discord.utilities.mg_recycler.MGRecyclerDataPayload
 import com.discord.utilities.mg_recycler.SingleTypePayload
 import com.discord.utilities.rest.RestAPI.AppHeadersProvider
@@ -24,11 +35,13 @@ import com.discord.utilities.search.network.`SearchFetcher$getRestObservable$3`
 import com.discord.utilities.search.network.SearchQuery
 import com.discord.utilities.search.query.FilterType
 import com.discord.utilities.search.query.node.QueryNode
+import com.discord.utilities.search.query.node.answer.ChannelNode
 import com.discord.utilities.search.query.node.answer.HasAnswerOption
 import com.discord.utilities.search.query.node.answer.HasNode
 import com.discord.utilities.search.query.node.content.ContentNode
 import com.discord.utilities.search.query.node.filter.FilterNode
 import com.discord.utilities.search.query.parsing.QueryParser
+import com.discord.utilities.search.query.parsing.`QueryParser$Companion$getInAnswerRule$1`
 import com.discord.utilities.search.strings.SearchStringProvider
 import com.discord.utilities.search.suggestion.SearchSuggestionEngine
 import com.discord.utilities.search.suggestion.entries.*
@@ -40,6 +53,7 @@ import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import com.franmontiel.persistentcookiejar.cache.SetCookieCache
 import com.franmontiel.persistentcookiejar.persistence.SharedPrefsCookiePersistor
 import com.lytefast.flexinput.R
+import de.robv.android.xposed.XposedBridge
 import moe.lava.awoocord.scout.api.SearchAPIInterface
 import moe.lava.awoocord.scout.parsing.*
 import moe.lava.awoocord.scout.ui.*
@@ -67,6 +81,7 @@ class Scout : Plugin() {
         patchQueryParser()
         patchSearchUI(context)
         patchSearchPadding()
+        patchThreadSupport()
     }
 
     override fun stop(context: Context) {
@@ -590,6 +605,96 @@ class Scout : Plugin() {
             view?.run {
                 fitsSystemWindows = false
                 setPadding(paddingLeft, 16.dp, paddingRight, paddingBottom)
+            }
+        }
+    }
+
+    private fun patchThreadSupport() {
+        // Patch query parser for in: to support names with spaces, by wrapping them in quotes
+        // This enables searching for threads which can have spaces in their names
+        patcher.instead<QueryParser.Companion>("getInAnswerRule") {
+            val compile = Pattern.compile("^\\s*#(\".*?\"|[^ ]+)", 64);
+            `QueryParser$Companion$getInAnswerRule$1`(compile, compile)
+        }
+
+        // Patch Search data model builder to also add in threads
+        patcher.before<SearchData.Builder>(
+            "buildForGuild",
+            Map::class.java,
+            Map::class.java,
+            Map::class.java,
+            Map::class.java
+        ) { (
+                param,
+                members: Map<Long, GuildMember>,
+                users: Map<Long, User>,
+                channels: Map<Long, Channel>,
+                permissions: Map<Long, Long>
+            ) ->
+            val threads = StoreStream.getChannels().`getThreadsForGuildInternal$app_productionGoogleRelease`(
+                StoreStream.getGuildSelected().selectedGuildId
+            )
+            val mergedChannels = channels.toMutableMap()
+            val mergedPermissions = permissions.toMutableMap()
+            for (thread in threads) {
+                mergedChannels[thread.id] = thread
+                mergedPermissions[thread.id] = Permission.VIEW_CHANNEL
+            }
+            param.args[2] = mergedChannels
+            param.args[3] = mergedPermissions
+        }
+
+        // Post-process the name-id map to wrap the names in quotes if they have spaces
+        patcher.after<SearchData.Builder>(
+            "buildForGuild",
+            Map::class.java,
+            Map::class.java,
+            Map::class.java,
+            Map::class.java
+        ) { param ->
+            val res = param.result as SearchData
+            val nameMap = res.channelNameIndex as HashMap<String, Long>
+            nameMap
+                .filter { (name) -> name.contains(" ") }
+                .forEach { (name, value) ->
+                    val wrapped = "\"${name}\""
+                    nameMap.remove(name)
+                    nameMap[wrapped] = value
+                }
+        }
+
+        // Patch the channel node to automatically insert quotes for names with spaces
+        patcher.before<ChannelNode>(String::class.java) { (param, name: String) ->
+            if (name.contains(" ") && !name.startsWith("\""))
+                param.args[0] = "\"${name}\""
+        }
+
+        // Patch the search sorter to place threads last
+        patcher.before<`ChannelUtils$getSortByNameAndType$1`<*>>(
+            "compare",
+            Object::class.java, // ?? :sob:
+            Object::class.java,
+        ) { (param, ch1: Channel, ch2: Channel) ->
+            // ChannelUtils.H <=> ChannelUtils.isThread
+            if (ChannelUtils.H(ch1) && !ChannelUtils.H(ch2)) {
+                param.result = 1
+            }
+            if (!ChannelUtils.H(ch1) && ChannelUtils.H(ch2)) {
+                param.result = -1
+            }
+        }
+
+        // Patch search suggestions to set icon to thread icon if it is a thread
+        patcher.after<WidgetSearchSuggestionsAdapter.InChannelViewHolder>(
+            "onConfigure",
+            Int::class.javaPrimitiveType!!,
+            MGRecyclerDataPayload::class.java
+        ) { (param, _: Int, payload: SingleTypePayload<ChannelSuggestion>) ->
+            StoreStream.getChannels().getChannel(payload.data.channelId)?.let {
+                if (ChannelUtils.H(it)) {
+                    itemView.findViewById<ImageView>("search_suggestions_item_channel_icon")
+                        .setImageResource(R.e.ic_thread_white_24dp)
+                }
             }
         }
     }
