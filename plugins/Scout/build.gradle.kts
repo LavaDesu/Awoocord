@@ -1,4 +1,4 @@
-version = "1.2.1"
+version = "1.2.2"
 description = "Backported and improved search functionality"
 
 aliucord {
@@ -19,7 +19,6 @@ aliucord {
 
         # 1.2.0 - Scout is in:to knitting
         * Adds support for searching threads; simply use in:
-        * !!! Scout now requires Aliucord 2.4.0, please update before reporting issues
 
         # 1.1.3
         * Patch to fix the biggggg top padding in results
