@@ -1,4 +1,4 @@
-version = "1.2.2"
+version = "1.3.0"
 description = "Backported and improved search functionality"
 
 aliucord {
@@ -10,6 +10,9 @@ aliucord {
 
         Changelog {added marginTop}
         ======================
+        # 1.3.0
+        * Removes empty discriminator when searching with users
+
         # 1.2.2
         * Fix possible rare crash related to thread searching
 
