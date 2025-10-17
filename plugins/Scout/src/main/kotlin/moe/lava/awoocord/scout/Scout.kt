@@ -65,6 +65,11 @@ class Scout : Plugin() {
     lateinit var ssProvider: ScoutSearchStringProvider
     lateinit var searchApi: SearchAPIInterface
 
+    init {
+        @Suppress("DEPRECATION")
+        needsResources = true
+    }
+
     override fun load(context: Context) {
         scoutRes = ScoutResource(resources!!)
         ssProvider = ScoutSearchStringProvider(context)
