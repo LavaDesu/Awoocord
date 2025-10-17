@@ -12,7 +12,6 @@ import com.aliucord.patcher.*
 import com.aliucord.utils.DimenUtils.dp
 import com.aliucord.utils.ViewUtils.findViewById
 import com.aliucord.wrappers.ChannelWrapper.Companion.id
-import com.aliucord.wrappers.ChannelWrapper.Companion.type
 import com.discord.BuildConfig
 import com.discord.api.channel.Channel
 import com.discord.api.channel.ChannelUtils
@@ -38,6 +37,7 @@ import com.discord.utilities.search.query.node.QueryNode
 import com.discord.utilities.search.query.node.answer.ChannelNode
 import com.discord.utilities.search.query.node.answer.HasAnswerOption
 import com.discord.utilities.search.query.node.answer.HasNode
+import com.discord.utilities.search.query.node.answer.UserNode
 import com.discord.utilities.search.query.node.content.ContentNode
 import com.discord.utilities.search.query.node.filter.FilterNode
 import com.discord.utilities.search.query.parsing.QueryParser
@@ -53,7 +53,6 @@ import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import com.franmontiel.persistentcookiejar.cache.SetCookieCache
 import com.franmontiel.persistentcookiejar.persistence.SharedPrefsCookiePersistor
 import com.lytefast.flexinput.R
-import de.robv.android.xposed.XposedBridge
 import moe.lava.awoocord.scout.api.SearchAPIInterface
 import moe.lava.awoocord.scout.parsing.*
 import moe.lava.awoocord.scout.ui.*
@@ -82,6 +81,7 @@ class Scout : Plugin() {
         patchSearchUI(context)
         patchSearchPadding()
         patchThreadSupport()
+        patchUsernameDiscriminator()
     }
 
     override fun stop(context: Context) {
@@ -609,6 +609,7 @@ class Scout : Plugin() {
         }
     }
 
+    // Adds support for searching in threads
     private fun patchThreadSupport() {
         // Patch query parser for in: to support names with spaces, by wrapping them in quotes
         // This enables searching for threads which can have spaces in their names
@@ -626,8 +627,8 @@ class Scout : Plugin() {
             Map::class.java
         ) { (
                 param,
-                members: Map<Long, GuildMember>,
-                users: Map<Long, User>,
+                /* members */ _: Map<Long, GuildMember>,
+                /* users*/ _: Map<Long, User>,
                 channels: Map<Long, Channel>,
                 permissions: Map<Long, Long>
             ) ->
@@ -691,13 +692,36 @@ class Scout : Plugin() {
             "onConfigure",
             Int::class.javaPrimitiveType!!,
             MGRecyclerDataPayload::class.java
-        ) { (param, _: Int, payload: SingleTypePayload<ChannelSuggestion>) ->
+        ) { (_, _: Int, payload: SingleTypePayload<ChannelSuggestion>) ->
             StoreStream.getChannels().getChannel(payload.data.channelId)?.let {
                 if (ChannelUtils.H(it)) {
                     itemView.findViewById<ImageView>("search_suggestions_item_channel_icon")
                         .setImageDrawable(scoutRes.getDrawable("ic_thread_actually_white_24dp"))
                 }
             }
+        }
+    }
+
+    // Removes the #0000 discriminator from usernames when searching
+    private fun patchUsernameDiscriminator() {
+        // Change the regex for the user rule
+        // Previously it matches something like <username>#<discrim>
+        // Now it matches something like @<username>[#<discrim>] (bots still have discriminators)
+        // The @ is required unfortunately, to distinguish it from literally any other word
+        patcher.instead<QueryParser.Companion>("getUserRule") {
+            val regex = Pattern.compile("^\\s*@(?:([^@#:]+)#([0-9]{4})|([a-z0-9._]{2,32}))", 64);
+
+            // Returns a new rule to support our optional second group (discriminator)
+            return@instead SimpleParserRule(regex) { matcher, _, obj ->
+                val username = matcher.group(3) ?: matcher.group(1)!!
+                val discrim = matcher.group(2)?.toInt() ?: 0
+                ParseSpec(UserNode(username, discrim), obj)
+            }
+        }
+
+        // Patches the node's string representation to add an @ and remove empty discriminators
+        patcher.after<UserNode>("getText") { param ->
+            param.result = "@" + (param.result as String).replace("#0000", "")
         }
     }
 }
