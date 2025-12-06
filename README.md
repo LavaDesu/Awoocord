@@ -1,5 +1,9 @@
 # Awoocord Plugins
 
+## [Bubbles](plugins/Zinnia) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/RoleBlocks.zip)
+
+Wrap messages in bubbles inspired by Material 3 Expressive
+
 ## [RoleBlocks](plugins/Zinnia) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/RoleBlocks.zip)
 
 Apply the role colour as a background of usernames, improving contrast with some role colours

@@ -24,6 +24,7 @@ rootProject.name = "Awoocord"
 val plugins = mapOf(
     "ComponentsV2Beta" to "canary/ComponentsV2",
     "SlashCommandsFixBeta" to "canary/SlashCommandsFix",
+    "Bubbles" to "plugins/Crocosmia",
     "Scout" to "plugins/Scout",
     "RoleBlocks" to "plugins/Zinnia",
 )
