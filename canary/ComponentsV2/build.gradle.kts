@@ -3,6 +3,10 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 version = "8.8.0"
 description = "Beta backport of ComponentsV2"
 
+android {
+    namespace = "moe.lava.corenary.componentsv2"
+}
+
 aliucord {
     // Changelog of your plugin
     changelog.set("""
@@ -28,11 +32,12 @@ aliucord {
         * Initial release >w<
     """.trimIndent())
 
-    excludeFromUpdaterJson.set(false)
+    deploy.set(true)
 }
 
-//apply(plugin = "com.gradleup.shadow")
-apply(plugin = "com.github.johnrengelman.shadow") // remove when gradle 8
+apply {
+    plugin(libs.plugins.shadow.get().pluginId)
+}
 
 val shadowDir = File(buildDir, "intermediates/shadowed")
 

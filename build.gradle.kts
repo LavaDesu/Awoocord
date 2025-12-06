@@ -1,86 +1,78 @@
+@file:Suppress("UnstableApiUsage")
+
 import com.aliucord.gradle.AliucordExtension
-import com.android.build.gradle.BaseExtension
+import com.android.build.gradle.LibraryExtension
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidExtension
+import org.jlleitschuh.gradle.ktlint.KtlintExtension
 
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-        maven("https://maven.aliucord.com/snapshots")
-        gradlePluginPortal() // remove when gradle 8
-        maven("https://jitpack.io")
-    }
-
-    dependencies {
-        classpath("com.android.tools.build:gradle:7.1.3")
-        classpath("com.aliucord:gradle:main-SNAPSHOT")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.5.21")
-//        classpath("com.gradleup.shadow:shadow-gradle-plugin:8.3.8")
-        classpath("com.github.johnrengelman.shadow:com.github.johnrengelman.shadow.gradle.plugin:7.1.2") // For Gradle 7 compat
-    }
+plugins {
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.aliucord.plugin) apply true
+    alias(libs.plugins.ktlint) apply false
+    alias(libs.plugins.shadow) apply false
 }
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-        maven("https://maven.aliucord.com/snapshots")
-    }
-}
-
-fun Project.aliucord(configuration: AliucordExtension.() -> Unit) = extensions.getByName<AliucordExtension>("aliucord").configuration()
-
-fun Project.android(configuration: BaseExtension.() -> Unit) = extensions.getByName<BaseExtension>("android").configuration()
 
 subprojects {
-    apply(plugin = "com.android.library")
-    apply(plugin = "com.aliucord.gradle")
-    apply(plugin = "kotlin-android")
+    val libs = rootProject.libs
 
-    aliucord {
-        author("Lava", 368398754077868032L)
-        updateUrl.set("https://raw.githubusercontent.com/LavaDesu/Awoocord/builds/updater.json")
-        buildUrl.set("https://raw.githubusercontent.com/LavaDesu/Awoocord/builds/%s.zip")
+    apply {
+        plugin(libs.plugins.android.library.get().pluginId)
+        plugin(libs.plugins.aliucord.plugin.get().pluginId)
+        plugin(libs.plugins.kotlin.android.get().pluginId)
+        plugin(libs.plugins.ktlint.get().pluginId)
     }
 
-    android {
-        compileSdkVersion(31)
+    configure<LibraryExtension> {
+        compileSdk = 36
+        namespace = "moe.lava.awoocord"
 
         defaultConfig {
-            minSdk = 24
-            targetSdk = 31
+            minSdk = 21
+        }
+
+        buildFeatures {
+            aidl = false
+            buildConfig = true
+            renderScript = false
+            shaders = false
         }
 
         compileOptions {
-            sourceCompatibility = JavaVersion.VERSION_11
-            targetCompatibility = JavaVersion.VERSION_11
-        }
-
-        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-            kotlinOptions {
-                jvmTarget = "11"
-                // Disables some unnecessary features
-                freeCompilerArgs = freeCompilerArgs +
-                        "-Xno-call-assertions" +
-                        "-Xno-param-assertions" +
-                        "-Xno-receiver-assertions"
-            }
+            sourceCompatibility = JavaVersion.VERSION_21
+            targetCompatibility = JavaVersion.VERSION_21
         }
     }
 
+    configure<AliucordExtension> {
+        author("Lava", 368398754077868032L, hyperlink = true)
+        github("https://github.com/LavaDesu/Awoocord")
+    }
+
+    configure<KtlintExtension> {
+        version.set(libs.versions.ktlint.asProvider())
+
+        coloredOutput.set(true)
+        outputColorName.set("RED")
+        ignoreFailures.set(true)
+    }
+
+    configure<KotlinAndroidExtension> {
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_21
+            optIn.add("kotlin.RequiresOptIn")
+        }
+    }
+
+    @Suppress("unused")
     dependencies {
-        val discord by configurations
+        val compileOnly by configurations
         val implementation by configurations
 
-        // Stubs for all Discord classes
-        discord("com.discord:discord:aliucord-SNAPSHOT")
-        implementation("com.aliucord:Aliucord:2.5.0")
-
-        implementation("androidx.appcompat:appcompat:1.4.0")
-        implementation("com.google.android.material:material:1.4.0")
-        implementation("androidx.constraintlayout:constraintlayout:2.1.2")
+        compileOnly(libs.discord)
+        compileOnly(libs.aliucord)
+        compileOnly(libs.aliuhook)
+        compileOnly(libs.kotlin.stdlib)
     }
-}
-
-task<Delete>("clean") {
-    delete(rootProject.buildDir)
 }

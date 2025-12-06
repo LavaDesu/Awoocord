@@ -18,11 +18,12 @@ aliucord {
         * Initial port >w< thanks @jedenastka
     """.trimIndent())
 
-    excludeFromUpdaterJson.set(false)
+    deploy.set(true)
 }
 
-//apply(plugin = "com.gradleup.shadow")
-apply(plugin = "com.github.johnrengelman.shadow") // remove when gradle 8
+apply {
+    plugin(libs.plugins.shadow.get().pluginId)
+}
 
 val shadowDir = File(buildDir, "intermediates/shadowed")
 

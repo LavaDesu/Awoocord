@@ -13,20 +13,15 @@ import com.aliucord.utils.DimenUtils.dp
 import com.aliucord.utils.ViewUtils.findViewById
 import com.aliucord.wrappers.ChannelWrapper.Companion.id
 import com.discord.BuildConfig
-import com.discord.api.channel.Channel
-import com.discord.api.channel.ChannelUtils
-import com.discord.api.channel.`ChannelUtils$getSortByNameAndType$1`
+import com.discord.api.channel.*
 import com.discord.api.permission.Permission
 import com.discord.databinding.WidgetSearchSuggestionsItemHasBinding
 import com.discord.models.member.GuildMember
 import com.discord.models.user.User
 import com.discord.restapi.RequiredHeadersInterceptor
-import com.discord.restapi.RequiredHeadersInterceptor.HeadersProvider
 import com.discord.restapi.RestAPIBuilder
 import com.discord.simpleast.core.parser.*
-import com.discord.stores.StoreSearch
-import com.discord.stores.StoreSearchInput
-import com.discord.stores.StoreStream
+import com.discord.stores.*
 import com.discord.utilities.mg_recycler.MGRecyclerDataPayload
 import com.discord.utilities.mg_recycler.SingleTypePayload
 import com.discord.utilities.rest.RestAPI.AppHeadersProvider
@@ -34,10 +29,7 @@ import com.discord.utilities.search.network.`SearchFetcher$getRestObservable$3`
 import com.discord.utilities.search.network.SearchQuery
 import com.discord.utilities.search.query.FilterType
 import com.discord.utilities.search.query.node.QueryNode
-import com.discord.utilities.search.query.node.answer.ChannelNode
-import com.discord.utilities.search.query.node.answer.HasAnswerOption
-import com.discord.utilities.search.query.node.answer.HasNode
-import com.discord.utilities.search.query.node.answer.UserNode
+import com.discord.utilities.search.query.node.answer.*
 import com.discord.utilities.search.query.node.content.ContentNode
 import com.discord.utilities.search.query.node.filter.FilterNode
 import com.discord.utilities.search.query.parsing.QueryParser
@@ -57,6 +49,7 @@ import moe.lava.awoocord.scout.api.SearchAPIInterface
 import moe.lava.awoocord.scout.parsing.*
 import moe.lava.awoocord.scout.ui.*
 import java.util.regex.Pattern
+import b.a.k.b as FormatUtils
 
 @AliucordPlugin()
 @Suppress("unused", "unchecked_cast")
@@ -97,8 +90,7 @@ class Scout : Plugin() {
 
     // Creates a new custom search API implementation, for the extra `min_id` param in search queries
     private fun buildSearchApi(context: Context): SearchAPIInterface {
-        @Suppress("cast_never_succeeds")
-        val appHeadersProvider = AppHeadersProvider.INSTANCE as HeadersProvider
+        val appHeadersProvider = AppHeadersProvider.INSTANCE
         val requiredHeadersInterceptor = RequiredHeadersInterceptor(appHeadersProvider)
         val persistentCookieJar = PersistentCookieJar(SetCookieCache(), SharedPrefsCookiePersistor(context))
         val restAPIBuilder = RestAPIBuilder(BuildConfig.HOST_API, persistentCookieJar)
@@ -552,7 +544,7 @@ class Scout : Plugin() {
         // Patch formatting utils to use our custom lowercase strings
         // This is called by FilterViewHolder.onConfigure, using the results from getAnswerText and getFilterText
         patcher.patch(
-            b.a.k.b::class.java.getDeclaredMethod("c",
+            FormatUtils::class.java.getDeclaredMethod("c",
                 Resources::class.java,
                 Int::class.javaPrimitiveType!!,
                 Array::class.java,
@@ -568,12 +560,7 @@ class Scout : Plugin() {
                     else -> null
                 }
                 override?.let {
-                    // Why invoke? Becuase I can't for the life of me get Function1 to cast properly
-                    param.result = b.a.k.b::class.java.getDeclaredMethod("g",
-                        CharSequence::class.java,
-                        Array::class.java,
-                        Function1::class.java
-                    ).invoke(null, it, objArr.copyOf(), param.args[3])
+                    param.result = FormatUtils.g(it, objArr.copyOf(), param.args[3] as b.a.k.`b$b`)
                 }
             }
         )

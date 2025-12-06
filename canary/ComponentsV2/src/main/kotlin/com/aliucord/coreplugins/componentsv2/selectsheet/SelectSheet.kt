@@ -1,5 +1,3 @@
-@file:Suppress("MISSING_DEPENDENCY_CLASS", "MISSING_DEPENDENCY_SUPERCLASS")
-
 package com.aliucord.coreplugins.componentsv2.selectsheet
 
 import android.os.Bundle
@@ -16,6 +14,7 @@ import com.discord.utilities.view.extensions.ViewExtensions
 import com.discord.utilities.view.recycler.MaxHeightRecyclerView
 import com.discord.widgets.botuikit.views.select.`SelectComponentBottomSheet$binding$2`
 import com.lytefast.flexinput.R
+import b.a.k.b as FormatUtils
 
 internal class SelectSheet : AppBottomSheet {
     val entry: BotUiComponentV2Entry?
@@ -71,7 +70,7 @@ internal class SelectSheet : AppBottomSheet {
 
         if (state.isMultiSelect) {
              subtitle.text =
-                b.a.k.b.k(
+                FormatUtils.k(
                     this,
                     R.h.message_select_component_select_requirement,
                     arrayOf(state.minSelections),

@@ -1,6 +1,10 @@
 version = "1.3.0"
 description = "Backported and improved search functionality"
 
+android {
+    namespace = "moe.lava.awoocord.scout"
+}
+
 aliucord {
     // Changelog of your plugin
     changelog.set("""
@@ -43,5 +47,5 @@ aliucord {
         * Initial release >w<
     """.trimIndent())
 
-    excludeFromUpdaterJson.set(false)
+    deploy.set(true)
 }

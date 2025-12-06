@@ -62,7 +62,6 @@ object ZinniaSettings {
     var blockApcaThreshold by api.delegate(75.0)
     var blockWcagThreshold by api.delegate(4.5)
 
-    @Suppress("MISSING_DEPENDENCY_CLASS", "MISSING_DEPENDENCY_SUPERCLASS")
     class Page : SettingsPage() {
         private lateinit var manager: RadioManager
         private lateinit var mRoleDot: CheckedSetting

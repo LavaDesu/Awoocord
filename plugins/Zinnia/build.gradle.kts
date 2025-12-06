@@ -15,5 +15,5 @@ aliucord {
         * Initial release >w<
     """.trimIndent())
 
-    excludeFromUpdaterJson.set(false)
+    deploy.set(true)
 }
