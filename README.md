@@ -1,5 +1,9 @@
 # Awoocord Plugins
 
+## [Bubbles](plugins/Crocosmia) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/Bubbles.zip)
+
+Wrap messages in bubbles inspired by Material 3 Expressive
+
 ## [Clump](plugins/Bocchi) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/Clump.zip)
 
 Group messages more leniently (e.g. mentions, attachments, etc..), reducing clutter and wasted space.
