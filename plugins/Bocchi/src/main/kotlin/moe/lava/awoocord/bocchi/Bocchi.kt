@@ -1,17 +1,34 @@
 package moe.lava.awoocord.bocchi
 
 import android.content.Context
+import android.view.View
 import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.entities.Plugin
 import com.aliucord.patcher.*
+import com.aliucord.utils.accessField
 import com.discord.api.message.MessageTypes
 import com.discord.models.message.Message
+import com.discord.utilities.view.text.SimpleDraweeSpanTextView
+import com.discord.widgets.chat.list.adapter.WidgetChatListAdapterItemMessage
+import com.discord.widgets.chat.list.entries.ChatListEntry
+import com.discord.widgets.chat.list.entries.MessageEntry
 import com.discord.widgets.chat.list.model.WidgetChatListModelMessages
+
+private val WidgetChatListAdapterItemMessage.itemText by accessField<SimpleDraweeSpanTextView>()
 
 @AliucordPlugin(requiresRestart = true)
 @Suppress("unused")
 class Bocchi : Plugin() {
     override fun start(context: Context) {
+        patcher.after<WidgetChatListAdapterItemMessage>(
+            "onConfigure",
+            Int::class.java,
+            ChatListEntry::class.java,
+        ) { (_, _: Int, entry: MessageEntry) ->
+            if (entry.type == ChatListEntry.MESSAGE_MINIMAL && entry.message.content.isNullOrEmpty()) {
+                itemText.visibility = View.GONE
+            }
+        }
         patcher.instead<WidgetChatListModelMessages.Companion>(
             "shouldConcatMessage",
             WidgetChatListModelMessages.Items::class.java,
