@@ -8,7 +8,7 @@ import com.discord.api.message.MessageTypes
 import com.discord.models.message.Message
 import com.discord.widgets.chat.list.model.WidgetChatListModelMessages
 
-@AliucordPlugin
+@AliucordPlugin(requiresRestart = true)
 @Suppress("unused")
 class Bocchi : Plugin() {
     override fun start(context: Context) {
