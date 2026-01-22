@@ -46,8 +46,8 @@ jobs:
           cd $GITHUB_WORKSPACE/src
           chmod +x gradlew
           ./gradlew make generateUpdaterJson
-          cp {canary,plugins}/*/build/*.zip $GITHUB_WORKSPACE/builds
-          cp build/updater.json $GITHUB_WORKSPACE/builds
+          cp {canary,plugins}/*/build/outputs/*.zip $GITHUB_WORKSPACE/builds
+          cp build/outputs/updater.json $GITHUB_WORKSPACE/builds
 
       - name: Push builds
         run: |
