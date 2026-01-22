@@ -1,5 +1,9 @@
 # Awoocord Plugins
 
+## [Clump](plugins/Bocchi) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/Clump.zip)
+
+Group messages more leniently (e.g. mentions, attachments, etc..), reducing clutter and wasted space.
+
 ## [RoleBlocks](plugins/Zinnia) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/RoleBlocks.zip)
 
 Apply the role colour as a background of usernames, improving contrast with some role colours
