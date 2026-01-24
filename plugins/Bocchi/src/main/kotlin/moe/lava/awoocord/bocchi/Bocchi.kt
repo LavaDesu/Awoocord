@@ -52,7 +52,7 @@ class Bocchi : Plugin() {
 //                message.hasAttachments() ||
 //                message.hasEmbeds() ||
                 items.concatCount >= 5 ||
-                (message.isWebhook && message.author?.username == message2.author.username)
+                !(message.isWebhook && message.author?.username == message2.author.username)
             )
         }
     }
