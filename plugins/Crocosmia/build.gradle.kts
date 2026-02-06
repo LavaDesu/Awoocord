@@ -8,5 +8,5 @@ aliucord {
         * Initial release >w<
     """.trimIndent())
 
-    deploy.set(false)
+    deploy.set(true)
 }
