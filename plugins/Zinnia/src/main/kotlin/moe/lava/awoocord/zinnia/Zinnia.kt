@@ -11,7 +11,6 @@ import com.aliucord.patcher.component1
 import com.aliucord.patcher.component2
 import com.aliucord.patcher.component3
 import com.aliucord.utils.DimenUtils.dp
-import com.aliucord.utils.ViewUtils.findViewById
 import com.aliucord.utils.accessField
 import com.discord.databinding.WidgetChannelMembersListItemUserBinding
 import com.discord.widgets.channels.memberlist.adapter.ChannelMembersListAdapter
@@ -22,6 +21,10 @@ import com.discord.widgets.chat.list.entries.MessageEntry
 
 private val ChannelMembersListViewHolderMember.binding
         by accessField<WidgetChannelMembersListItemUserBinding>()
+private val WidgetChatListAdapterItemMessage.itemName
+        by accessField<TextView?>()
+private val WidgetChatListAdapterItemMessage.replyName
+        by accessField<TextView?>()
 
 data class Colours(
     val fgP: Int,
@@ -73,20 +76,21 @@ class Zinnia : Plugin() {
             Int::class.javaPrimitiveType!!,
             ChatListEntry::class.java,
         ) { (_, _: Int, entry: MessageEntry) ->
-            val username = itemView.findViewById<TextView?>("chat_list_adapter_item_text_name")
-                ?: return@after
-            APCAUtil.configureOn(username, entry.author?.color, Threshold.Large)
+            itemName?.let {
+                APCAUtil.configureOn(it, entry.author?.color, Threshold.Large)
+            }
         }
 
         // Configures for reply preview username
         patcher.after<WidgetChatListAdapterItemMessage>(
-            "configureReplyPreview",
-            MessageEntry::class.java,
-        ) { (_, entry: MessageEntry) ->
-            val referencedAuthor = entry.replyData?.messageEntry?.author
-            val replyUsername = itemView.findViewById<TextView?>("chat_list_adapter_item_text_decorator_reply_name")
-                ?: return@after
-            APCAUtil.configureOn(replyUsername, referencedAuthor?.color, Threshold.Small)
+            "configureReplyName",
+            String::class.java,
+            Int::class.javaPrimitiveType!!,
+            Boolean::class.javaPrimitiveType!!,
+        ) { (_, _: String, colour: Int) ->
+            replyName?.let {
+                APCAUtil.configureOn(it, colour, Threshold.Small)
+            }
         }
     }
 }
