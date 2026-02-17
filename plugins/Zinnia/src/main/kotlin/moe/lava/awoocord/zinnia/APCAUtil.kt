@@ -8,19 +8,25 @@ import com.aliucord.utils.DimenUtils.dp
 import com.discord.stores.StoreStream
 import kotlin.math.abs
 
+enum class Threshold {
+    Large,
+    Medium,
+    Small
+}
+
 internal object APCAUtil {
     private val settings = ZinniaSettings
 
-    internal fun configureOn(view: TextView, colour: Int?) {
+    internal fun configureOn(view: TextView, colour: Int?, threshold: Threshold) {
         when (settings.mode) {
-            Mode.Block -> configureBlock(view, colour ?: Color.BLACK)
+            Mode.Block -> configureBlock(view, colour ?: Color.BLACK, threshold)
             Mode.RoleDot -> configureRoleDot(view, colour ?: Color.BLACK)
         }
     }
 
     private fun configureRoleDot(view: TextView, colour: Int) { }
 
-    private fun configureBlock(view: TextView, colourP: Int) {
+    private fun configureBlock(view: TextView, colourP: Int, threshold: Threshold) {
         val isLight = StoreStream.getUserSettingsSystem().theme == "light"
         var colour = colourP
         val bcol = GradientDrawable()
@@ -68,10 +74,10 @@ internal object APCAUtil {
         }
 
         val usePreferred = when (settings.blockMode) {
-            BlockMode.ApcaOnly -> isApca(colours)
+            BlockMode.ApcaOnly -> isApca(colours, threshold)
             BlockMode.WcagOnly -> isWcag(colours)
-            BlockMode.ApcaLightWcagDark -> if (isLight) isApca(colours) else isWcag(colours)
-            BlockMode.WcagLightApcaDark -> if (isLight) isWcag(colours) else isApca(colours)
+            BlockMode.ApcaLightWcagDark -> if (isLight) isApca(colours, threshold) else isWcag(colours)
+            BlockMode.WcagLightApcaDark -> if (isLight) isWcag(colours) else isApca(colours, threshold)
             BlockMode.ThemeOnly,
             BlockMode.InvertedThemeOnly,
             BlockMode.WhiteOnly,
@@ -90,10 +96,15 @@ internal object APCAUtil {
         }
     }
 
-    private fun isApca(c: Colours): Boolean {
+    private fun isApca(c: Colours, threshold: Threshold): Boolean {
         val cPref = abs(APCA.contrast(c.fgP, c.bgP))
         val cOth = abs(APCA.contrast(c.fgO, c.bgO))
-        return cPref > settings.blockApcaThreshold || cPref > cOth
+        val thresholdValue = when (threshold) {
+            Threshold.Large -> settings.blockApcaThresholdLarge
+            Threshold.Medium -> settings.blockApcaThresholdMedium
+            Threshold.Small -> settings.blockApcaThresholdSmall
+        }
+        return cPref > thresholdValue || cPref > cOth
     }
 
     private fun isWcag(c: Colours): Boolean {
@@ -101,5 +112,4 @@ internal object APCAUtil {
         val cOth = ColorUtils.calculateContrast(c.fgO, c.bgO)
         return cPref > settings.blockWcagThreshold || cPref > cOth
     }
-
 }

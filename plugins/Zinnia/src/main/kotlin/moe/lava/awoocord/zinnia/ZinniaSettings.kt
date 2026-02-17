@@ -1,6 +1,7 @@
 package moe.lava.awoocord.zinnia
 
 import android.graphics.Color
+import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -18,7 +19,6 @@ import com.aliucord.wrappers.users.globalName
 import com.discord.stores.StoreStream
 import com.discord.utilities.color.ColorCompat
 import com.discord.views.CheckedSetting
-import com.discord.views.RadioManager
 import com.lytefast.flexinput.R
 import kotlin.math.roundToInt
 import kotlin.properties.ReadWriteProperty
@@ -94,22 +94,18 @@ object ZinniaSettings {
 
     var mode by reactive { api.delegateEnum(Mode.Block) }
 
-    var dotKeepNameColour by reactive { api.delegate(false) }
-
     var blockAlsoDefault by reactive { api.delegate(true) }
     var blockInverted by reactive { api.delegate(false) }
     var blockMode by reactive { api.delegateEnum(BlockMode.ApcaLightWcagDark) }
-    var blockApcaThreshold by reactive { api.delegate(45.0f) }
+    var blockApcaThresholdLarge by reactive { api.delegate(45.0f) }
+    var blockApcaThresholdMedium by reactive { api.delegate(45.0f) }
+    var blockApcaThresholdSmall by reactive { api.delegate(45.0f) }
     var blockWcagThreshold by reactive { api.delegate(4.5f) }
 
     private val _alpha = reactive { api.delegate("alpha", 255) }
     var alpha by _alpha
 
     class Page : SettingsPage() {
-        private lateinit var manager: RadioManager
-        private lateinit var mRoleDot: CheckedSetting
-        private lateinit var mBlock: CheckedSetting
-
         private val checks = mutableListOf<CheckedSetting>()
 
         private val _previewH = reactive { basicDelegate(0) }
@@ -119,7 +115,7 @@ object ZinniaSettings {
         private val _previewV = reactive { basicDelegate(100) }
         private var previewV by _previewV
 
-        private fun createRadio(newMode: BlockMode, text: String, subtext: String? = null): CheckedSetting {
+        private fun addRadio(newMode: BlockMode, text: String, subtext: String? = null): CheckedSetting {
             return Utils.createCheckedSetting(requireContext(), CheckedSetting.ViewType.RADIO, text, subtext).addTo(linearLayout) {
                 isChecked = blockMode == newMode
                 setOnCheckedListener {
@@ -131,7 +127,18 @@ object ZinniaSettings {
             }
         }
 
-        private fun createSlider(
+        private fun createLabel(text: String? = null): TextView {
+            return TextView(context, null, 0, R.i.UiKit_TextView).apply {
+                textSize = 16.0f
+                typeface = ResourcesCompat.getFont(context, Constants.Fonts.whitney_medium)
+                this.text = text
+                layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                    bottomMargin = 4.dp
+                }
+            }
+        }
+
+        private fun addSlider(
             min: Int,
             max: Int,
             initial: Int = min,
@@ -140,14 +147,7 @@ object ZinniaSettings {
             var pendingValue = initial
             return LinearLayout(requireContext(), null, 0, R.i.UiKit_Settings_Item).addTo(linearLayout) {
                 orientation = LinearLayout.VERTICAL
-                val display = TextView(context, null, 0, R.i.UiKit_TextView).addTo(this) {
-                    textSize = 16.0f
-                    typeface = ResourcesCompat.getFont(context, Constants.Fonts.whitney_medium)
-                    text = onChange(initial, false)
-                    layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
-                        bottomMargin = 4.dp
-                    }
-                }
+                val display = createLabel(onChange(initial, false)).addTo(this)
                 SeekBar(context, null, 0, R.i.UiKit_SeekBar).addTo(this) {
                     this.max = max - min
                     progress = initial
@@ -171,13 +171,37 @@ object ZinniaSettings {
             }
         }
 
-        private fun createSlider(binding: Delegate<Int>, min: Int, max: Int, immediate: Boolean = false, label: (Int) -> String): LinearLayout {
+        private fun addSlider(binding: Delegate<Int>, min: Int, max: Int, immediate: Boolean = false, label: (Int) -> String): LinearLayout {
             var value by binding
-            return createSlider(min, max, value) { newValue, commit ->
+            return addSlider(min, max, value) { newValue, commit ->
                 @Suppress("AssignedValueIsNeverRead") // kt so dumb
                 if (immediate || commit) value = newValue
                 label(newValue)
             }
+        }
+
+        private fun createPreview(
+            label: String,
+            styleRes: Int,
+        ): TextView {
+            val ctx = requireContext()
+            val view = TextView(ctx, null, 0, styleRes).apply {
+                val me = StoreStream.getUsers().me
+                text = me.globalName ?: me.username
+                layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                    marginStart = 16.dp
+                    marginEnd = 16.dp
+                }
+            }
+            LinearLayout(ctx, null, 0, R.i.UiKit_Settings_Item).addTo(linearLayout) {
+                view.addTo(this)
+                createLabel(label).addTo(this) {
+                    layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                        bottomMargin = 0
+                    }
+                }
+            }
+            return view
         }
 
         override fun onDestroyView() {
@@ -196,42 +220,12 @@ object ZinniaSettings {
                 val roleDotSettings = mutableListOf<CheckedSetting>()
 
                 addHeader(ctx, "Text colour")
-                createRadio(BlockMode.ApcaLightWcagDark, "Automatic", "Adjusts text colour based on optimal contrast with role colour")
-                createRadio(BlockMode.ThemeOnly, "By theme", "Adjusts text colour based on system theme (dark/light)")
-                createRadio(BlockMode.InvertedThemeOnly, "By theme (inverted)", "Same as above, but inverted")
-                createRadio(BlockMode.WhiteOnly, "White", "Force text colour to be white")
-                createRadio(BlockMode.BlackOnly, "Black", "Force text colour to be black")
-                createRadio(BlockMode.Unchanged, "Unchanged", "Keep text colour; ideal for using with a translucent block")
-
-                /*
-                addHeader(ctx, "Mode")
-
-                mBlock = Utils.createCheckedSetting(
-                    ctx,
-                    CheckedSetting.ViewType.RADIO,
-                    "Block mode",
-                    "Wraps the username in a coloured block",
-                ).addTo(this) {
-                    isChecked = mode == Mode.Block
-                    setOnCheckedListener {
-                        mode = Mode.Block
-                        mRoleDot.isChecked = false
-                    }
-                }
-
-                mRoleDot = Utils.createCheckedSetting(
-                    ctx,
-                    CheckedSetting.ViewType.RADIO,
-                    "Role dot mode",
-                    "Adds a coloured role dot next to the username, similar to how Discord does it in their new accessibility settings",
-                ).addTo(this) {
-                    isChecked = mode == Mode.RoleDot
-                    setOnCheckedListener {
-                        mode = Mode.RoleDot
-                        mBlock.isChecked = false
-                    }
-                }
-                */
+                addRadio(BlockMode.ApcaLightWcagDark, "Automatic", "Adjusts text colour based on optimal contrast with role colour")
+                addRadio(BlockMode.ThemeOnly, "By theme", "Adjusts text colour based on system theme (dark/light)")
+                addRadio(BlockMode.InvertedThemeOnly, "By theme (inverted)", "Same as above, but inverted")
+                addRadio(BlockMode.WhiteOnly, "White", "Force text colour to be white")
+                addRadio(BlockMode.BlackOnly, "Black", "Force text colour to be black")
+                addRadio(BlockMode.Unchanged, "Unchanged", "Keep text colour; ideal for using with a translucent block")
 
                 addHeader(ctx, "Block Settings")
 
@@ -248,7 +242,7 @@ object ZinniaSettings {
                     blockSettings.add(this)
                 }
 
-                createSlider(_alpha, 0, 255, true) { "Alpha: ${(it / 2.55f).roundToInt()}%" }
+                addSlider(_alpha, 0, 255, true) { "Alpha: ${(it / 2.55f).roundToInt()}%" }
 
 //                createSlider(0, 255, blockApcaThreshold.roundToInt()) { value, commit ->
 //                    blockApcaThreshold = value.toFloat()
@@ -256,26 +250,27 @@ object ZinniaSettings {
 //                }
 
                 addHeader(ctx, "Preview")
-                val preview = TextView(ctx, null, 0, R.i.UiKit_TextView_Large_SingleLine).addTo(this) {
-                    val me = StoreStream.getUsers().me
-                    text = me.globalName ?: me.username
-                    layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
-                        marginStart = 16.dp
-                        marginEnd = 16.dp
-                    }
-                }
+                val previews = mutableListOf(
+                    Threshold.Large to createPreview("Message header username", R.i.UiKit_TextView_Large_SingleLine),
+                    Threshold.Medium to createPreview("Channels list", R.i.UiKit_TextView).apply {
+                        setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.d.uikit_textsize_medium))
+                    },
+                    Threshold.Small to createPreview("Message reply username", R.i.UiKit_TextView).apply {
+                        setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.d.uikit_textsize_small))
+                    },
+                )
 
                 val hsv = floatArrayOf(0f, 0f, 0f)
                 Color.colorToHSV(ColorCompat.getThemedColor(this, R.b.color_brand), hsv)
                 previewH = hsv[0].roundToInt()
                 previewS = (hsv[1] * 100).roundToInt()
                 previewV = (hsv[2] * 100).roundToInt()
-                createSlider(_previewH, 0, 360, true) { "Hue: $it" }
-                createSlider(_previewS, 0, 100, true) { "Saturation: $it%" }
-                createSlider(_previewV, 0, 100, true) { "Value: $it%" }
+                addSlider(_previewH, 0, 360, true) { "Hue: $it" }
+                addSlider(_previewS, 0, 100, true) { "Saturation: $it%" }
+                addSlider(_previewV, 0, 100, true) { "Value: $it%" }
 
                 onStateUpdate = {
-                    updatePreview(preview)
+                    previews.forEach { updatePreview(it) }
                     if (blockMode != BlockMode.Unchanged) {
                         invertSwitch.l.b().isClickable = true
                         invertSwitch.alpha = 1f
@@ -288,9 +283,10 @@ object ZinniaSettings {
             }
         }
 
-        fun updatePreview(preview: TextView) {
+        fun updatePreview(pair: Pair<Threshold, TextView>) {
+            val (threshold, preview) = pair
             val colour = Color.HSVToColor(floatArrayOf(previewH.toFloat(), previewS / 100f, previewV / 100f))
-            APCAUtil.configureOn(preview, colour)
+            APCAUtil.configureOn(preview, colour, threshold)
         }
     }
 }

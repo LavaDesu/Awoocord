@@ -62,7 +62,7 @@ class Zinnia : Plugin() {
                 }
             }
 
-            APCAUtil.configureOn(usernameTextView, member.color)
+            APCAUtil.configureOn(usernameTextView, member.color, Threshold.Medium)
         }
     }
 
@@ -75,7 +75,7 @@ class Zinnia : Plugin() {
         ) { (_, _: Int, entry: MessageEntry) ->
             val username = itemView.findViewById<TextView?>("chat_list_adapter_item_text_name")
                 ?: return@after
-            APCAUtil.configureOn(username, entry.author?.color)
+            APCAUtil.configureOn(username, entry.author?.color, Threshold.Large)
         }
 
         // Configures for reply preview username
@@ -86,7 +86,7 @@ class Zinnia : Plugin() {
             val referencedAuthor = entry.replyData?.messageEntry?.author
             val replyUsername = itemView.findViewById<TextView?>("chat_list_adapter_item_text_decorator_reply_name")
                 ?: return@after
-            APCAUtil.configureOn(replyUsername, referencedAuthor?.color)
+            APCAUtil.configureOn(replyUsername, referencedAuthor?.color, Threshold.Small)
         }
     }
 }
