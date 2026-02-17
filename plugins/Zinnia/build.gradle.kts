@@ -1,9 +1,15 @@
-version = "1.1.1"
+version = "1.2.0"
 description = "Coloured usernames to be a bit more pleasing on the eyes"
 
 aliucord {
     // Changelog of your plugin
     changelog.set("""
+        # 1.2.0
+        * Finally fixes the annoying padding issue in replies
+        * Adds nice preview blocks in settings with configurable hsv bars for all your previewing needs
+        * Tweaked constrast ratio a bit which may improve some colours' legibility
+        * Added transparency option, alongside "unchanged" colour option which pairs nicely together for a translucent glass effect
+
         # 1.1.1
         * Revert incorrect spacing fix, since it just breaks replies. Proper fix soon
 
