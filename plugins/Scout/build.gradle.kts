@@ -1,4 +1,4 @@
-version = "1.3.0"
+version = "1.4.0"
 description = "Backported and improved search functionality"
 
 android {
@@ -14,6 +14,12 @@ aliucord {
 
         Changelog {added marginTop}
         ======================
+        # 1.4.0 - Scout is searching for clues about the elusive MvM update
+        * Added the authorType filter option to search by user, bot, or webhook
+        * Moved sort filter to the top of the new ones
+        * Fixes a Discord bug where typing "mentions" would also suggest "has"
+        * Some people said the options were getting bloated, so they're all hidden behind a "Show all" button now. They'll still show up in auto suggestions.
+
         # 1.3.0
         * Removes empty discriminator when searching with users
 
