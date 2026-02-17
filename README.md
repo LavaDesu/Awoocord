@@ -1,18 +1,18 @@
 # Awoocord Plugins
 
-## [Bubbles](plugins/Crocosmia) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/Bubbles.zip)
+## [Bubbles](plugins/Crocosmia) | [Download](https://github.com/cillynder/Awoocord/raw/builds/Bubbles.zip)
 
 Wrap messages in bubbles inspired by Material 3 Expressive
 
-## [Clump](plugins/Bocchi) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/Clump.zip)
+## [Clump](plugins/Bocchi) | [Download](https://github.com/cillynder/Awoocord/raw/builds/Clump.zip)
 
 Group messages more leniently (e.g. mentions, attachments, etc..), reducing clutter and wasted space.
 
-## [RoleBlocks](plugins/Zinnia) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/RoleBlocks.zip)
+## [RoleBlocks](plugins/Zinnia) | [Download](https://github.com/cillynder/Awoocord/raw/builds/RoleBlocks.zip)
 
 Apply the role colour as a background of usernames, improving contrast with some role colours
 
-## [Scout](plugins/Scout) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/Scout.zip)
+## [Scout](plugins/Scout) | [Download](https://github.com/cillynder/Awoocord/raw/builds/Scout.zip)
 
 Reimplemented features from search of other clients:
 - Sorting by oldest first
@@ -21,10 +21,10 @@ Reimplemented features from search of other clients:
 
 # WIP Backports
 
-## [SlashCommandsFix](canary/SlashCommandsFix) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/SlashCommandsFixBeta.zip)
+## [SlashCommandsFix](canary/SlashCommandsFix) | [Download](https://github.com/cillynder/Awoocord/raw/builds/SlashCommandsFixBeta.zip)
 
 Fixes slash commands not showing up.
 
-## [ComponentsV2](canary/ComponentsV2) | [Download](https://github.com/LavaDesu/Awoocord/raw/builds/ComponentsV2Beta.zip)
+## [ComponentsV2](canary/ComponentsV2) | [Download](https://github.com/cillynder/Awoocord/raw/builds/ComponentsV2Beta.zip)
 
 Fix missing/empty bot messages using the new embed system. Such messages will be marked "CV2" as part of its tag.
