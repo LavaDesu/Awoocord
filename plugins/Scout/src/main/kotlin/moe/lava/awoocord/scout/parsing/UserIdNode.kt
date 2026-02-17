@@ -22,7 +22,7 @@ class UserIdNode(private val userID: String) : AnswerNode() {
 
     override fun getValidFilters() = setOf(FilterType.FROM, FilterType.MENTIONS)
     override fun isValid(searchData: SearchData?) = true
-    override fun getText() = userID.toString()
+    override fun getText() = userID
 
     override fun updateQuery(
         builder: SearchQuery.Builder?,

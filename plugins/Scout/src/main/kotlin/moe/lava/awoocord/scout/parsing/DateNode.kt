@@ -20,9 +20,7 @@ class DateNode(private val date: Long?, private val unparsed: String) : AnswerNo
         val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val regex: Pattern = Pattern.compile("^\\d{4}-\\d{2}-\\d{2}", Pattern.UNICODE_CASE)
         fun getDateRule(): ParserRule {
-            return SimpleParserRule(regex) { matcher, parser, obj ->
-                checkNotNull(matcher) { "matcher" }
-                checkNotNull(parser) { "parser" }
+            return SimpleParserRule(regex) { matcher, _, obj ->
                 val match = matcher.group()
                 val date = fmt.parse(match)
                 val node = DateNode(date?.time, match)
@@ -31,7 +29,7 @@ class DateNode(private val date: Long?, private val unparsed: String) : AnswerNo
         }
 
         private fun getFilterRule(str: String, type: FilterType): ParserRule {
-            val regex = Pattern.compile("^\\s*?(${str}):", 64);
+            val regex = Pattern.compile("^\\s*?(${str}):", 64)
             return SimpleParserRule(regex) { _, _, obj ->
                 ParseSpec(FilterNode(type, str), obj)
             }
@@ -44,7 +42,7 @@ class DateNode(private val date: Long?, private val unparsed: String) : AnswerNo
 
     override fun getValidFilters(): Set<FilterType> = FilterTypeExtension.dates.toSet()
     override fun isValid(searchData: SearchData?): Boolean = date != null
-    override fun getText(): CharSequence? = unparsed
+    override fun getText(): CharSequence = unparsed
 
     private val snowflake: String?
         get() = date?.let { SnowflakeUtils.fromTimestamp(date).toString() }

@@ -24,7 +24,7 @@ class SortNode(private val text: String): AnswerNode() {
         }
 
         fun getFilterRule(str: String): ParserRule {
-            val regex = Pattern.compile("^\\s*?(${str}):", 64);
+            val regex = Pattern.compile("^\\s*?(${str}):", 64)
             return SimpleParserRule(regex) { _, _, obj ->
                 ParseSpec(FilterNode(FilterTypeExtension.SORT, str), obj)
             }

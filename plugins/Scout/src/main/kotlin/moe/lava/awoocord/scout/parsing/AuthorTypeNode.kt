@@ -1,3 +1,5 @@
+@file:Suppress("EnumValuesSoftDeprecate")
+
 package moe.lava.awoocord.scout.parsing
 
 import android.content.Context
@@ -41,7 +43,7 @@ class AuthorTypeNode(val type: AuthorType): AnswerNode() {
         }
 
         fun getFilterRule(str: String): ParserRule {
-            val regex = Pattern.compile("^\\s*?(${str}):", 64);
+            val regex = Pattern.compile("^\\s*?(${str}):", 64)
             return SimpleParserRule(regex) { _, _, obj ->
                 ParseSpec(FilterNode(FilterTypeExtension.AUTHOR_TYPE, str), obj)
             }
