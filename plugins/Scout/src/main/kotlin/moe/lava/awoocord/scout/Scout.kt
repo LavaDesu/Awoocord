@@ -8,20 +8,37 @@ import androidx.core.content.res.ResourcesCompat
 import com.aliucord.Utils
 import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.entities.Plugin
-import com.aliucord.patcher.*
+import com.aliucord.patcher.PreHook
+import com.aliucord.patcher.after
+import com.aliucord.patcher.before
+import com.aliucord.patcher.component1
+import com.aliucord.patcher.component2
+import com.aliucord.patcher.component3
+import com.aliucord.patcher.component4
+import com.aliucord.patcher.component5
+import com.aliucord.patcher.instead
 import com.aliucord.utils.DimenUtils.dp
+import com.aliucord.utils.RxUtils.subscribe
 import com.aliucord.utils.ViewUtils.findViewById
+import com.aliucord.utils.accessField
 import com.aliucord.wrappers.ChannelWrapper.Companion.id
 import com.discord.BuildConfig
-import com.discord.api.channel.*
+import com.discord.api.channel.Channel
+import com.discord.api.channel.ChannelUtils
+import com.discord.api.channel.`ChannelUtils$getSortByNameAndType$1`
 import com.discord.api.permission.Permission
 import com.discord.databinding.WidgetSearchSuggestionsItemHasBinding
+import com.discord.databinding.WidgetSearchSuggestionsItemSuggestionBinding
 import com.discord.models.member.GuildMember
 import com.discord.models.user.User
 import com.discord.restapi.RequiredHeadersInterceptor
 import com.discord.restapi.RestAPIBuilder
-import com.discord.simpleast.core.parser.*
-import com.discord.stores.*
+import com.discord.simpleast.core.parser.ParseSpec
+import com.discord.simpleast.core.parser.Parser
+import com.discord.simpleast.core.parser.Rule
+import com.discord.stores.StoreSearch
+import com.discord.stores.StoreSearchInput
+import com.discord.stores.StoreStream
 import com.discord.utilities.mg_recycler.MGRecyclerDataPayload
 import com.discord.utilities.mg_recycler.SingleTypePayload
 import com.discord.utilities.rest.RestAPI.AppHeadersProvider
@@ -29,27 +46,43 @@ import com.discord.utilities.search.network.`SearchFetcher$getRestObservable$3`
 import com.discord.utilities.search.network.SearchQuery
 import com.discord.utilities.search.query.FilterType
 import com.discord.utilities.search.query.node.QueryNode
-import com.discord.utilities.search.query.node.answer.*
+import com.discord.utilities.search.query.node.answer.ChannelNode
+import com.discord.utilities.search.query.node.answer.HasAnswerOption
+import com.discord.utilities.search.query.node.answer.HasNode
+import com.discord.utilities.search.query.node.answer.UserNode
 import com.discord.utilities.search.query.node.content.ContentNode
 import com.discord.utilities.search.query.node.filter.FilterNode
 import com.discord.utilities.search.query.parsing.QueryParser
 import com.discord.utilities.search.query.parsing.`QueryParser$Companion$getInAnswerRule$1`
+import com.discord.utilities.search.strings.ContextSearchStringProvider
 import com.discord.utilities.search.strings.SearchStringProvider
 import com.discord.utilities.search.suggestion.SearchSuggestionEngine
-import com.discord.utilities.search.suggestion.entries.*
+import com.discord.utilities.search.suggestion.entries.ChannelSuggestion
+import com.discord.utilities.search.suggestion.entries.FilterSuggestion
+import com.discord.utilities.search.suggestion.entries.HasSuggestion
+import com.discord.utilities.search.suggestion.entries.SearchSuggestion
 import com.discord.utilities.search.validation.SearchData
 import com.discord.widgets.search.results.WidgetSearchResults
 import com.discord.widgets.search.suggestions.WidgetSearchSuggestions
+import com.discord.widgets.search.suggestions.`WidgetSearchSuggestions$configureUI$1`
 import com.discord.widgets.search.suggestions.WidgetSearchSuggestionsAdapter
 import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import com.franmontiel.persistentcookiejar.cache.SetCookieCache
 import com.franmontiel.persistentcookiejar.persistence.SharedPrefsCookiePersistor
 import com.lytefast.flexinput.R
 import moe.lava.awoocord.scout.api.SearchAPIInterface
-import moe.lava.awoocord.scout.parsing.*
-import moe.lava.awoocord.scout.ui.*
+import moe.lava.awoocord.scout.parsing.DateNode
+import moe.lava.awoocord.scout.parsing.SimpleParserRule
+import moe.lava.awoocord.scout.parsing.SortNode
+import moe.lava.awoocord.scout.parsing.UserIdNode
+import moe.lava.awoocord.scout.ui.DatePickerFragment
+import moe.lava.awoocord.scout.ui.ScoutResource
+import moe.lava.awoocord.scout.ui.ScoutSearchStringProvider
 import java.util.regex.Pattern
 import b.a.k.b as FormatUtils
+
+private val WidgetSearchSuggestionsAdapter.FilterViewHolder.binding
+        by accessField<WidgetSearchSuggestionsItemSuggestionBinding>()
 
 @AliucordPlugin()
 @Suppress("unused", "unchecked_cast")
@@ -57,6 +90,8 @@ class Scout : Plugin() {
     lateinit var scoutRes: ScoutResource
     lateinit var ssProvider: ScoutSearchStringProvider
     lateinit var searchApi: SearchAPIInterface
+
+    var optionsExpanded = false
 
     init {
         @Suppress("DEPRECATION")
@@ -123,18 +158,21 @@ class Scout : Plugin() {
         origFilterTypes = origFilterTypes ?: values
         var nextIdx = values.size
 
+        val EXPAND = constructor.newInstance("EXPAND", nextIdx++) as FilterType
         val EXCLUDE = constructor.newInstance("EXCLUDE", nextIdx++) as FilterType
         val BEFORE = constructor.newInstance("BEFORE", nextIdx++) as FilterType
         val DURING = constructor.newInstance("DURING", nextIdx++) as FilterType
         val AFTER = constructor.newInstance("AFTER", nextIdx++) as FilterType
         val SORT = constructor.newInstance("SORT", nextIdx) as FilterType
+        FilterTypeExtension.EXPAND = EXPAND
         FilterTypeExtension.EXCLUDE = EXCLUDE
         FilterTypeExtension.BEFORE = BEFORE
         FilterTypeExtension.DURING = DURING
         FilterTypeExtension.AFTER = AFTER
         FilterTypeExtension.SORT = SORT
         FilterTypeExtension.dates = arrayOf(BEFORE, DURING, AFTER)
-        FilterTypeExtension.values = arrayOf(EXCLUDE, BEFORE, DURING, AFTER, SORT)
+        FilterTypeExtension.values = arrayOf(EXPAND, EXCLUDE, BEFORE, DURING, AFTER, SORT)
+        FilterTypeExtension.filters = arrayOf(EXCLUDE, BEFORE, DURING, AFTER, SORT)
 
         val newValues = values.toMutableList()
         newValues.addAll(FilterTypeExtension.values)
@@ -544,7 +582,8 @@ class Scout : Plugin() {
         // Patch formatting utils to use our custom lowercase strings
         // This is called by FilterViewHolder.onConfigure, using the results from getAnswerText and getFilterText
         patcher.patch(
-            FormatUtils::class.java.getDeclaredMethod("c",
+            FormatUtils::class.java.getDeclaredMethod(
+                "c",
                 Resources::class.java,
                 Int::class.javaPrimitiveType!!,
                 Array::class.java,
@@ -565,20 +604,63 @@ class Scout : Plugin() {
             }
         )
 
+        // Patch to key filters properly for smoother recycling
+        // Thank u discord for keying every filter type the same thing!! /s
+        patcher.instead<WidgetSearchSuggestionsAdapter.Companion>(
+            "getFilterItem",
+            FilterSuggestion::class.java,
+        ) { (_, suggestion: FilterSuggestion) ->
+            SingleTypePayload(suggestion, suggestion.filterType.name, 2) // 2 = WidgetSearchSuggestionsAdapter.TYPE_FILTER
+        }
+
+        // Patch to manually configure expander, need to do this to update the suggestions widget
+        patcher.before<WidgetSearchSuggestionsAdapter.FilterViewHolder>(
+            "onConfigure",
+            Int::class.javaPrimitiveType!!,
+            MGRecyclerDataPayload::class.java,
+        ) { (param, _: Int, payload: SingleTypePayload<FilterSuggestion>) ->
+            val suggestion = payload.data
+            if (suggestion.filterType != FilterTypeExtension.EXPAND) {
+                return@before
+            }
+            param.result = null
+
+            val sampleText = binding.b
+            val layout = binding.c
+            val filterText = binding.d
+            val icon = binding.e
+            layout.setOnClickListener {
+                val onFilter = adapter.onFilterClicked as `WidgetSearchSuggestions$configureUI$1`
+                val widget = onFilter.`this$0`
+                optionsExpanded = true
+                WidgetSearchSuggestions.Model.Companion!!.get(ContextSearchStringProvider(context)).z().subscribe {
+                    WidgetSearchSuggestions.`access$configureUI`(widget, this)
+                }
+            }
+            sampleText.text = null
+            filterText.text = ssProvider.expandFilterString
+            val drawable = R.e.ic_chevron_right_primary_300_12dp
+            icon.setImageDrawable(ResourcesCompat.getDrawable(context.resources, drawable, null))
+        }
+
         // Patch to add our new filters into the initial suggestions
         patcher.after<SearchSuggestionEngine>(
             "getFilterSuggestions",
             CharSequence::class.java,
             SearchStringProvider::class.java,
             Boolean::class.javaPrimitiveType!!,
-        ) { param ->
-            val query = param.args[0] as CharSequence
+        ) { (param, query: CharSequence) ->
             val res = (param.result as List<SearchSuggestion>).toMutableList()
-            for (type in FilterTypeExtension.values) {
-                val st = ssProvider.stringFor(type) + ":"
 
-                if (st.contains(query))
-                    res.add(FilterSuggestion(type))
+            if (optionsExpanded || query != "") {
+                for (type in FilterTypeExtension.filters) {
+                    val st = ssProvider.stringFor(type) + ":"
+
+                    if (st.contains(query))
+                        res.add(FilterSuggestion(type))
+                }
+            } else {
+                res.add(FilterSuggestion(FilterTypeExtension.EXPAND))
             }
             param.result = res.toList()
         }
@@ -594,6 +676,8 @@ class Scout : Plugin() {
         }
 
         patcher.after<WidgetSearchSuggestions>("onViewBound", View::class.java) {
+            // Being a bit sneaky and reset the expanded flag here
+            optionsExpanded = false
             view?.run {
                 fitsSystemWindows = false
                 setPadding(paddingLeft, 16.dp, paddingRight, paddingBottom)

@@ -41,6 +41,8 @@ class ScoutSearchStringProvider(private val context: Context) {
         get() = getString("sort").decapitalise(context)
     val sortOldString: String
         get() = getString("search_oldest_short").decapitalise(context)
+    val expandFilterString: String
+        get() = getString("friends_pending_request_expand")
 
     // Not localised
     val hasPollString: String
