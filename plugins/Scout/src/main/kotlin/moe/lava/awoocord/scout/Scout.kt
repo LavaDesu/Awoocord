@@ -161,20 +161,20 @@ class Scout : Plugin() {
         var nextIdx = values.size
 
         val EXPAND = constructor.newInstance("EXPAND", nextIdx++) as FilterType
+        val SORT = constructor.newInstance("SORT", nextIdx++) as FilterType
         val EXCLUDE = constructor.newInstance("EXCLUDE", nextIdx++) as FilterType
         val BEFORE = constructor.newInstance("BEFORE", nextIdx++) as FilterType
         val DURING = constructor.newInstance("DURING", nextIdx++) as FilterType
         val AFTER = constructor.newInstance("AFTER", nextIdx++) as FilterType
-        val SORT = constructor.newInstance("SORT", nextIdx) as FilterType
         FilterTypeExtension.EXPAND = EXPAND
+        FilterTypeExtension.SORT = SORT
         FilterTypeExtension.EXCLUDE = EXCLUDE
         FilterTypeExtension.BEFORE = BEFORE
         FilterTypeExtension.DURING = DURING
         FilterTypeExtension.AFTER = AFTER
-        FilterTypeExtension.SORT = SORT
         FilterTypeExtension.dates = arrayOf(BEFORE, DURING, AFTER)
-        FilterTypeExtension.values = arrayOf(EXPAND, EXCLUDE, BEFORE, DURING, AFTER, SORT)
-        FilterTypeExtension.filters = arrayOf(EXCLUDE, BEFORE, DURING, AFTER, SORT)
+        FilterTypeExtension.values = arrayOf(EXPAND, SORT, EXCLUDE, BEFORE, DURING, AFTER)
+        FilterTypeExtension.filters = arrayOf(SORT, EXCLUDE, BEFORE, DURING, AFTER)
 
         val newValues = values.toMutableList()
         newValues.addAll(FilterTypeExtension.values)
