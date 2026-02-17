@@ -14,10 +14,19 @@ Apply the role colour as a background of usernames, improving contrast with some
 
 ## [Scout](plugins/Scout) | [Download](https://github.com/cillynder/Awoocord/raw/builds/Scout.zip)
 
-Reimplemented features from search of other clients:
-- Sorting by oldest first
-- Filter by date
-- Search from user ID
+Vastly improves the search experience on Aliucord.
+
+Features:
+- Sort by oldest messages first
+- Sort by oldest first
+- Filter by date (before, during, after)
+- Exclude certain messages (opposite of `in:`) (not even desktop has this!)
+- Search by user ID
+- Search in threads
+
+Fixes:
+- Removes the large padding from the top, most noticable if your device has a large status bar
+- Removes the unnecessary #0000 discriminator
 
 # WIP Backports
 
