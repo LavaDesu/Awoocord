@@ -107,12 +107,14 @@ class Scout : Plugin() {
     override fun start(context: Context) {
         extendFilterType()
         extendHasAnswerOption()
+        fixFiltersKeying()
+        fixHasFilterSuggestion()
+        fixSearchPadding()
         patchHasAnswerOption()
         patchHasNode()
         patchQuery()
         patchQueryParser()
         patchSearchUI(context)
-        patchSearchPadding()
         patchThreadSupport()
         patchUsernameDiscriminator()
     }
@@ -224,6 +226,49 @@ class Scout : Plugin() {
         field.isAccessible = true
         field.set(null, origHasAnswerOptions)
         origHasAnswerOptions = null
+    }
+
+    // Patch to key filters properly for smoother recycling
+    // Thank u discord for keying every filter type the same thing!! /s
+    private fun fixFiltersKeying() {
+        patcher.instead<WidgetSearchSuggestionsAdapter.Companion>(
+            "getFilterItem",
+            FilterSuggestion::class.java,
+        ) { (_, suggestion: FilterSuggestion) ->
+            SingleTypePayload(suggestion, suggestion.filterType.name, 2) // 2 = WidgetSearchSuggestionsAdapter.TYPE_FILTER
+        }
+    }
+
+    // YES DISCORD TYPO'ED THIS HAHAHAHAHAHAFAUHFAIUFHAIFBHUKFHYRISFSUOIRN
+    private fun fixHasFilterSuggestion() {
+        patcher.before<FilterSuggestion.Companion>(
+            "getStringRepresentation",
+            FilterType::class.java,
+            SearchStringProvider::class.java,
+        ) { (param, filter: FilterType, provider: SearchStringProvider) ->
+            if (filter == FilterType.HAS) {
+                param.result = provider.hasFilterString + ":"
+            }
+        }
+    }
+
+    // Patch out the gigantic padding in search results
+    private fun fixSearchPadding() {
+        patcher.after<WidgetSearchResults>("onViewBound", View::class.java) {
+            view?.run {
+                fitsSystemWindows = false
+                setPadding(paddingLeft, 16.dp, paddingRight, paddingBottom)
+            }
+        }
+
+        patcher.after<WidgetSearchSuggestions>("onViewBound", View::class.java) {
+            // Being a bit sneaky and reset the expanded flag here
+            optionsExpanded = false
+            view?.run {
+                fitsSystemWindows = false
+                setPadding(paddingLeft, 16.dp, paddingRight, paddingBottom)
+            }
+        }
     }
 
     // Patches various methods that use HasAnswerOption to include our new options
@@ -604,15 +649,6 @@ class Scout : Plugin() {
             }
         )
 
-        // Patch to key filters properly for smoother recycling
-        // Thank u discord for keying every filter type the same thing!! /s
-        patcher.instead<WidgetSearchSuggestionsAdapter.Companion>(
-            "getFilterItem",
-            FilterSuggestion::class.java,
-        ) { (_, suggestion: FilterSuggestion) ->
-            SingleTypePayload(suggestion, suggestion.filterType.name, 2) // 2 = WidgetSearchSuggestionsAdapter.TYPE_FILTER
-        }
-
         // Patch to manually configure expander, need to do this to update the suggestions widget
         patcher.before<WidgetSearchSuggestionsAdapter.FilterViewHolder>(
             "onConfigure",
@@ -663,25 +699,6 @@ class Scout : Plugin() {
                 res.add(FilterSuggestion(FilterTypeExtension.EXPAND))
             }
             param.result = res.toList()
-        }
-    }
-
-    // Patch out the gigantic padding in search results
-    private fun patchSearchPadding() {
-        patcher.after<WidgetSearchResults>("onViewBound", View::class.java) {
-            view?.run {
-                fitsSystemWindows = false
-                setPadding(paddingLeft, 16.dp, paddingRight, paddingBottom)
-            }
-        }
-
-        patcher.after<WidgetSearchSuggestions>("onViewBound", View::class.java) {
-            // Being a bit sneaky and reset the expanded flag here
-            optionsExpanded = false
-            view?.run {
-                fitsSystemWindows = false
-                setPadding(paddingLeft, 16.dp, paddingRight, paddingBottom)
-            }
         }
     }
 
