@@ -9,6 +9,7 @@ object FilterTypeExtension {
     lateinit var DURING: FilterType
     lateinit var AFTER: FilterType
     lateinit var EXCLUDE: FilterType
+    lateinit var AUTHOR_TYPE: FilterType
     lateinit var dates: Array<FilterType>
     lateinit var filters: Array<FilterType>
     lateinit var values: Array<FilterType>

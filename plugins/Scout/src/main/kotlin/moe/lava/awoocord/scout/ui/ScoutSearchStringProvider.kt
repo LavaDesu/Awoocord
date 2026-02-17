@@ -21,6 +21,7 @@ class ScoutSearchStringProvider(private val context: Context) {
         FilterTypeExtension.DURING -> duringFilterString
         FilterTypeExtension.AFTER -> afterFilterString
         FilterTypeExtension.SORT -> sortFilterString
+        FilterTypeExtension.AUTHOR_TYPE -> authorTypeFilter
         else -> throw IllegalArgumentException("invalid extended filter type")
     }
 
@@ -51,4 +52,9 @@ class ScoutSearchStringProvider(private val context: Context) {
         get() = "forward"
     val excludeFilterString: String
         get() = "exclude"
+    val authorTypeFilter: String
+        get() = "authorType"
+    val authorTypeAnswer: String
+        // TODO, could probably be localisable by joining each part together
+        get() = "user, bot or webhook"
 }

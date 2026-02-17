@@ -1,8 +1,17 @@
+@file:Suppress("EnumValuesSoftDeprecate", "CanConvertToMultiDollarString")
+
+/**
+ * Hi to anyone who might be reading this; I am sorry for the atrocious code in this plugin
+ * but I promise I'll be fixing it up soon :3
+ */
+
 package moe.lava.awoocord.scout
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Resources
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.core.content.res.ResourcesCompat
 import com.aliucord.Utils
@@ -27,6 +36,7 @@ import com.discord.api.channel.Channel
 import com.discord.api.channel.ChannelUtils
 import com.discord.api.channel.`ChannelUtils$getSortByNameAndType$1`
 import com.discord.api.permission.Permission
+import com.discord.databinding.WidgetSearchSuggestionItemHeaderBinding
 import com.discord.databinding.WidgetSearchSuggestionsItemHasBinding
 import com.discord.databinding.WidgetSearchSuggestionsItemSuggestionBinding
 import com.discord.models.member.GuildMember
@@ -71,6 +81,10 @@ import com.franmontiel.persistentcookiejar.cache.SetCookieCache
 import com.franmontiel.persistentcookiejar.persistence.SharedPrefsCookiePersistor
 import com.lytefast.flexinput.R
 import moe.lava.awoocord.scout.api.SearchAPIInterface
+import moe.lava.awoocord.scout.entries.AuthorTypeSuggestion
+import moe.lava.awoocord.scout.entries.AuthorTypeViewHolder
+import moe.lava.awoocord.scout.parsing.AuthorType
+import moe.lava.awoocord.scout.parsing.AuthorTypeNode
 import moe.lava.awoocord.scout.parsing.DateNode
 import moe.lava.awoocord.scout.parsing.SimpleParserRule
 import moe.lava.awoocord.scout.parsing.SortNode
@@ -84,7 +98,10 @@ import b.a.k.b as FormatUtils
 private val WidgetSearchSuggestionsAdapter.FilterViewHolder.binding
         by accessField<WidgetSearchSuggestionsItemSuggestionBinding>()
 
-@AliucordPlugin()
+private val WidgetSearchSuggestionsAdapter.HeaderViewHolder.binding
+        by accessField<WidgetSearchSuggestionItemHeaderBinding>()
+
+@AliucordPlugin
 @Suppress("unused", "unchecked_cast")
 class Scout : Plugin() {
     lateinit var scoutRes: ScoutResource
@@ -107,6 +124,7 @@ class Scout : Plugin() {
     override fun start(context: Context) {
         extendFilterType()
         extendHasAnswerOption()
+        extendSuggestionCategory()
         fixFiltersKeying()
         fixHasFilterSuggestion()
         fixSearchPadding()
@@ -120,9 +138,10 @@ class Scout : Plugin() {
     }
 
     override fun stop(context: Context) {
+        patcher.unpatchAll()
         resetFilterType()
         resetHasAnswerOption()
-        patcher.unpatchAll()
+        resetSuggestionCategory()
     }
 
     // Creates a new custom search API implementation, for the extra `min_id` param in search queries
@@ -148,7 +167,7 @@ class Scout : Plugin() {
 
     private var origFilterTypes: Array<FilterType>? = null
     // Creates new pseudo-values of the `FilterType` enum for date filters
-    @Suppress("LocalVariableName")
+    @Suppress("LocalVariableName", "AssignedValueIsNeverRead")
     private fun extendFilterType() {
         val cls = FilterType::class.java
         val constructor = cls.declaredConstructors[0]
@@ -163,18 +182,20 @@ class Scout : Plugin() {
         val EXPAND = constructor.newInstance("EXPAND", nextIdx++) as FilterType
         val SORT = constructor.newInstance("SORT", nextIdx++) as FilterType
         val EXCLUDE = constructor.newInstance("EXCLUDE", nextIdx++) as FilterType
+        val AUTHOR_TYPE = constructor.newInstance("AUTHOR_TYPE", nextIdx++) as FilterType
         val BEFORE = constructor.newInstance("BEFORE", nextIdx++) as FilterType
         val DURING = constructor.newInstance("DURING", nextIdx++) as FilterType
         val AFTER = constructor.newInstance("AFTER", nextIdx++) as FilterType
         FilterTypeExtension.EXPAND = EXPAND
         FilterTypeExtension.SORT = SORT
         FilterTypeExtension.EXCLUDE = EXCLUDE
+        FilterTypeExtension.AUTHOR_TYPE = AUTHOR_TYPE
         FilterTypeExtension.BEFORE = BEFORE
         FilterTypeExtension.DURING = DURING
         FilterTypeExtension.AFTER = AFTER
         FilterTypeExtension.dates = arrayOf(BEFORE, DURING, AFTER)
-        FilterTypeExtension.values = arrayOf(EXPAND, SORT, EXCLUDE, BEFORE, DURING, AFTER)
-        FilterTypeExtension.filters = arrayOf(SORT, EXCLUDE, BEFORE, DURING, AFTER)
+        FilterTypeExtension.filters = arrayOf(SORT, AUTHOR_TYPE, EXCLUDE) + FilterTypeExtension.dates
+        FilterTypeExtension.values = arrayOf(EXPAND) + FilterTypeExtension.filters
 
         val newValues = values.toMutableList()
         newValues.addAll(FilterTypeExtension.values)
@@ -194,7 +215,7 @@ class Scout : Plugin() {
 
     private var origHasAnswerOptions: Array<HasAnswerOption>? = null
     // Creates new pseudo-values of the `HasAnswerOption` enum for poll and forwarded filters
-    @Suppress("LocalVariableName")
+    @Suppress("LocalVariableName", "AssignedValueIsNeverRead")
     private fun extendHasAnswerOption() {
         val cls = HasAnswerOption::class.java
         val constructor = cls.declaredConstructors[0]
@@ -207,7 +228,7 @@ class Scout : Plugin() {
         var nextIdx = values.size
 
         val POLL = constructor.newInstance("POLL", nextIdx++, "poll") as HasAnswerOption
-        val SNAPSHOT = constructor.newInstance("SNAPSHOT", nextIdx, "snapshot") as HasAnswerOption
+        val SNAPSHOT = constructor.newInstance("SNAPSHOT", nextIdx++, "snapshot") as HasAnswerOption
         HasAnswerOptionExtension.POLL = POLL
         HasAnswerOptionExtension.SNAPSHOT = SNAPSHOT
         HasAnswerOptionExtension.values = arrayOf(POLL, SNAPSHOT)
@@ -226,6 +247,40 @@ class Scout : Plugin() {
         field.isAccessible = true
         field.set(null, origHasAnswerOptions)
         origHasAnswerOptions = null
+    }
+
+    private var origSuggestionCategories: Array<SearchSuggestion.Category>? = null
+    // Creates new pseudo-values of the suggestion categories to add correct headers
+    @Suppress("LocalVariableName", "AssignedValueIsNeverRead")
+    private fun extendSuggestionCategory() {
+        val cls = SearchSuggestion.Category::class.java
+        val constructor = cls.declaredConstructors[0]
+        constructor.isAccessible = true
+
+        val field = cls.getDeclaredField("\$VALUES")
+        field.isAccessible = true
+        val values = field.get(null) as Array<SearchSuggestion.Category>
+        origSuggestionCategories = origSuggestionCategories ?: values
+        var nextIdx = values.size
+
+        val AUTHOR_TYPE = constructor.newInstance("AUTHOR_TYPE", nextIdx++) as SearchSuggestion.Category
+        SuggestionCategoryExtension.AUTHOR_TYPE = AUTHOR_TYPE
+        SuggestionCategoryExtension.values = arrayOf(AUTHOR_TYPE)
+
+        val newValues = values.toMutableList()
+        newValues.addAll(SuggestionCategoryExtension.values)
+        field.set(null, newValues.toTypedArray())
+    }
+
+    private fun resetSuggestionCategory() {
+        if (origSuggestionCategories == null)
+            return logger.error("No unpatched suggestion categories?", null)
+
+        val cls = SearchSuggestion.Category::class.java
+        val field = cls.getDeclaredField("\$VALUES")
+        field.isAccessible = true
+        field.set(null, origSuggestionCategories)
+        origSuggestionCategories = null
     }
 
     // Patch to key filters properly for smoother recycling
@@ -341,24 +396,22 @@ class Scout : Plugin() {
             CharSequence::class.java,
             FilterType::class.java,
             SearchStringProvider::class.java,
-        ) { param ->
-            val query = param.args[0] as CharSequence
-            val filterType = param.args[1] as FilterType
-            val ossProvider = param.args[2] as SearchStringProvider
-
-            if (filterType != FilterType.HAS && filterType != FilterTypeExtension.EXCLUDE)
-                return@instead listOf<Any>()
-
-            val res = mutableListOf<HasSuggestion>()
-            for (opt in HasAnswerOption.values()) {
-                val filterText = opt.getLocalizedInputText(ossProvider)
-
-                if (filterText.contains(query))
-                    res.add(HasSuggestion(opt))
+        ) { (_, query: CharSequence, type: FilterType, provider: SearchStringProvider) ->
+            // Generate entries for author type
+            if (type == FilterTypeExtension.AUTHOR_TYPE) {
+                return@instead AuthorType.values()
+                    .filter { it.value.contains(query) }
+                    .map { AuthorTypeSuggestion(it) }
             }
-            res.toList()
-        }
 
+            // Generate entries for has options, including new ones
+            if (type == FilterType.HAS || type == FilterTypeExtension.EXCLUDE)
+                return@instead HasAnswerOption.values()
+                    .filter { it.getLocalizedInputText(provider).contains(query) }
+                    .map { HasSuggestion(it) }
+
+            listOf<Any>()
+        }
     }
 
     // Patching HasNode related methods for our exclude: filter type
@@ -384,9 +437,9 @@ class Scout : Plugin() {
             val opt = field.get(this) as HasAnswerOption
 
             if (filterType == FilterType.HAS)
-                builder.appendParam("has", opt.restParamValue);
+                builder.appendParam("has", opt.restParamValue)
             else if (filterType == FilterTypeExtension.EXCLUDE)
-                builder.appendParam("has", "-" + opt.restParamValue);
+                builder.appendParam("has", "-" + opt.restParamValue)
         }
 
         // Patching the behaviour when the has suggestion is clicked
@@ -416,8 +469,6 @@ class Scout : Plugin() {
             )
             getAnswerReplacementStart.isAccessible = true
 
-            logger.info(query.joinToString("|") { it.text })
-
             val replacementIdx = getAnswerReplacementStart.invoke(this, query) as Int
             val previousFilterText = query[replacementIdx]
             val filterNode = if (previousFilterText.text == ssProvider.excludeFilterString)
@@ -441,6 +492,7 @@ class Scout : Plugin() {
                 var minID = params["min_id"]
                 var maxID = params["max_id"]
                 val sortOrder = params["sort_order"]
+                val authorType = params["author_type"]
                 self.`$oldestMessageId`?.let {
                     if (sortOrder?.getOrNull(0) == "asc")
                         minID = listOf(it.toString())
@@ -461,7 +513,8 @@ class Scout : Plugin() {
                         retryAttempts,
                         self.`$searchQuery`.includeNsfw,
                         listOf("timestamp"),
-                        sortOrder
+                        sortOrder,
+                        authorType,
                     )
                 else
                     searchApi.searchChannelMessages(
@@ -475,7 +528,8 @@ class Scout : Plugin() {
                         retryAttempts,
                         self.`$searchQuery`.includeNsfw,
                         listOf("timestamp"),
-                        sortOrder
+                        sortOrder,
+                        authorType,
                     )
             }
         )
@@ -495,6 +549,8 @@ class Scout : Plugin() {
                 DateNode.getDateRule(),
                 SortNode.getFilterRule(ssProvider.sortFilterString),
                 SortNode.getSortRule(ssProvider),
+                AuthorTypeNode.getFilterRule(ssProvider.authorTypeFilter),
+                AuthorTypeNode.getAuthorTypesRule(),
                 SimpleParserRule(Pattern.compile("^\\s*?${ssProvider.excludeFilterString}:", 64)) { _, _, obj ->
                     ParseSpec(FilterNode(FilterTypeExtension.EXCLUDE, ssProvider.excludeFilterString), obj)
                 }
@@ -503,6 +559,7 @@ class Scout : Plugin() {
     }
 
     // This is probably the worst bit of this plugin
+    @SuppressLint("SetTextI18n")
     private fun patchSearchUI(context: Context) {
         // Run when a filter suggestion is clicked
         // Most of the code is copied from its implementation
@@ -515,7 +572,7 @@ class Scout : Plugin() {
         ) { param ->
             val filter = param.args[0] as FilterType
             if (filter !in FilterTypeExtension.values)
-                return@before; // Exit if not an extended filter type
+                return@before // Exit if not an extended filter type
 
             val replaceAndPublish = StoreSearchInput::class.java.getDeclaredMethod(
                 "replaceAndPublish",
@@ -549,7 +606,7 @@ class Scout : Plugin() {
                         getAnswerReplacementStart.invoke(this, list),
                         listOf(filterNode, DateNode(it)),
                         list
-                    );
+                    )
                 }
             }
 
@@ -558,14 +615,21 @@ class Scout : Plugin() {
                     lastIndex,
                     listOf(filterNode, SortNode(ssProvider.sortOldString)),
                     list
-                );
+                )
 
             if (filter == FilterTypeExtension.EXCLUDE)
                 replaceAndPublish.invoke(this,
                     lastIndex,
                     listOf(filterNode),
                     list
-                );
+                )
+
+            if (filter == FilterTypeExtension.AUTHOR_TYPE)
+                replaceAndPublish.invoke(this,
+                    lastIndex,
+                    listOf(filterNode),
+                    list
+                )
 
             param.result = null
         }
@@ -584,6 +648,7 @@ class Scout : Plugin() {
                 FilterTypeExtension.AFTER -> false to scoutRes.getDrawableId("baseline_update_24")
                 FilterTypeExtension.SORT -> true to R.e.ic_sort_white_24dp
                 FilterTypeExtension.EXCLUDE -> false to scoutRes.getDrawableId("baseline_do_disturb_on_24")
+                FilterTypeExtension.AUTHOR_TYPE -> true to R.e.ic_members_24dp
                 else -> false to null
             }
 
@@ -605,6 +670,8 @@ class Scout : Plugin() {
                 param.result = ScoutResource.SORT_ANSWER
             if (type == FilterTypeExtension.EXCLUDE)
                 param.result = ssProvider.getIdentifier("search_answer_has")
+            if (type == FilterTypeExtension.AUTHOR_TYPE)
+                param.result = ScoutResource.AUTHOR_TYPE_ANSWER
         }
 
         // Patch for retrieving filter name
@@ -619,6 +686,7 @@ class Scout : Plugin() {
                 FilterTypeExtension.DURING -> ssProvider.getIdentifier("search_filter_during")
                 FilterTypeExtension.AFTER -> ssProvider.getIdentifier("search_filter_after")
                 FilterTypeExtension.SORT -> ScoutResource.SORT_FILTER
+                FilterTypeExtension.AUTHOR_TYPE -> ScoutResource.AUTHOR_TYPE_FILTER
                 else -> null
             }
             res?.let { param.result = it }
@@ -641,6 +709,8 @@ class Scout : Plugin() {
                     ScoutResource.SORT_FILTER -> ssProvider.sortFilterString
                     ScoutResource.SORT_ANSWER -> ssProvider.sortOldString
                     ScoutResource.EXCLUDE_FILTER -> ssProvider.excludeFilterString
+                    ScoutResource.AUTHOR_TYPE_FILTER -> ssProvider.authorTypeFilter
+                    ScoutResource.AUTHOR_TYPE_ANSWER -> ssProvider.authorTypeAnswer
                     else -> null
                 }
                 override?.let {
@@ -700,6 +770,56 @@ class Scout : Plugin() {
             }
             param.result = res.toList()
         }
+
+        // Patch to add header for new categories
+        patcher.before<WidgetSearchSuggestionsAdapter.HeaderViewHolder>(
+            "onConfigure",
+            Int::class.javaPrimitiveType!!,
+            MGRecyclerDataPayload::class.java,
+        ) { (param, _: Int, payload: SingleTypePayload<SearchSuggestion.Category>) ->
+            val category = payload.data
+            if (category == SuggestionCategoryExtension.AUTHOR_TYPE) {
+                binding.b.text = "Author Type"
+                param.result = null
+            }
+        }
+
+        // Patch to add entries depending on category
+        patcher.after<WidgetSearchSuggestions.Model>(
+            List::class.java,
+            List::class.java,
+        ) { (_, _: List<QueryNode>, suggestions: List<SearchSuggestion>) ->
+            var lastCategory: SearchSuggestion.Category? = null
+            val newItems = mutableListOf<MGRecyclerDataPayload>()
+            suggestions.forEach {
+                if (it is AuthorTypeSuggestion) {
+                    if (lastCategory != it.category) {
+                        newItems.add(
+                            SingleTypePayload(it.category, it.category.name, 0)
+                        )
+                        lastCategory = it.category
+                    }
+                    newItems.add(
+                        SingleTypePayload(it, it.type.value, SuggestionCategoryExtension.AdapterType.AUTHOR_TYPE)
+                    )
+                }
+            }
+            suggestionItems.removeAll { it in newItems }
+            suggestionItems.addAll(0, newItems)
+        }
+
+        // Patch to add new types of suggestion entries
+        patcher.before<WidgetSearchSuggestionsAdapter>(
+            "onCreateViewHolder",
+            ViewGroup::class.java,
+            Int::class.javaPrimitiveType!!,
+        ) { (param, _: ViewGroup, id: Int) ->
+            when (id) {
+                SuggestionCategoryExtension.AdapterType.AUTHOR_TYPE -> {
+                    param.result = AuthorTypeViewHolder(this, scoutRes)
+                }
+            }
+        }
     }
 
     // Adds support for searching in threads
@@ -707,7 +827,7 @@ class Scout : Plugin() {
         // Patch query parser for in: to support names with spaces, by wrapping them in quotes
         // This enables searching for threads which can have spaces in their names
         patcher.instead<QueryParser.Companion>("getInAnswerRule") {
-            val compile = Pattern.compile("^\\s*#(\".*?\"|[^ ]+)", 64);
+            val compile = Pattern.compile("^\\s*#(\".*?\"|[^ ]+)", 64)
             `QueryParser$Companion$getInAnswerRule$1`(compile, compile)
         }
 
@@ -802,7 +922,7 @@ class Scout : Plugin() {
         // Now it matches something like @<username>[#<discrim>] (bots still have discriminators)
         // The @ is required unfortunately, to distinguish it from literally any other word
         patcher.instead<QueryParser.Companion>("getUserRule") {
-            val regex = Pattern.compile("^\\s*@(?:([^@#:]+)#([0-9]{4})|([a-z0-9._]{2,32}))", 64);
+            val regex = Pattern.compile("^\\s*@(?:([^@#:]+)#([0-9]{4})|([a-z0-9._]{2,32}))", 64)
 
             // Returns a new rule to support our optional second group (discriminator)
             return@instead SimpleParserRule(regex) { matcher, _, obj ->

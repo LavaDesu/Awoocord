@@ -24,6 +24,7 @@ interface SearchAPIInterface {
         @t("include_nsfw") includeNsfw: Boolean?,
         @t("sort_by") sortBy: List<String>?, // "timestamp" is one, not sure about any other sort types
         @t("sort_order") sortOrder: List<String>?, // "asc" or "desc"
+        @t("author_type") authorType: List<String>?,
     ): Observable<ModelSearchResponse?>
 
     @f("guilds/{guildId}/messages/search")
@@ -40,5 +41,6 @@ interface SearchAPIInterface {
         @t("include_nsfw") includeNsfw: Boolean?,
         @t("sort_by") sortBy: List<String>?,
         @t("sort_order") sortOrder: List<String>?,
+        @t("author_type") authorType: List<String>?,
     ): Observable<ModelSearchResponse?>
 }
