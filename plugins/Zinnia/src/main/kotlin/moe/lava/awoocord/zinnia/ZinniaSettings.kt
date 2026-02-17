@@ -1,13 +1,26 @@
 package moe.lava.awoocord.zinnia
 
+import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.widget.LinearLayout
+import android.widget.SeekBar
+import android.widget.TextView
+import androidx.core.content.res.ResourcesCompat
+import com.aliucord.Constants
 import com.aliucord.Utils
 import com.aliucord.api.SettingsAPI
 import com.aliucord.fragments.SettingsPage
 import com.aliucord.settings.delegate
+import com.aliucord.utils.DimenUtils.dp
+import com.aliucord.wrappers.users.globalName
+import com.discord.stores.StoreStream
+import com.discord.utilities.color.ColorCompat
 import com.discord.views.CheckedSetting
 import com.discord.views.RadioManager
+import com.lytefast.flexinput.R
+import kotlin.math.roundToInt
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
@@ -25,6 +38,7 @@ enum class BlockMode {
     InvertedThemeOnly,
     WhiteOnly,
     BlackOnly,
+    Unchanged,
 }
 
 class SettingsDelegateEnum<T : Enum<T>>(
@@ -49,18 +63,47 @@ private inline fun <T : View> T.addTo(parent: ViewGroup, block: T.() -> Unit = {
         parent.addView(this)
     }
 
+private typealias Delegate<Type> = ReadWriteProperty<Any, Type>
+
+fun <T> basicDelegate(initial: T) = object : Delegate<T> {
+    private var current = initial
+    override fun getValue(self: Any?, prop: KProperty<*>): T = current
+    override fun setValue(self: Any?, prop: KProperty<*>, value: T) { current = value }
+}
+
+private class StateDelegate<T>(
+    private val inner: Delegate<T>,
+    private val update: (T) -> Unit,
+) : Delegate<T> {
+    override fun getValue(self: Any?, prop: KProperty<*>): T = inner.getValue(self, prop)
+
+    override fun setValue(self: Any?, prop: KProperty<*>, value: T) {
+        inner.setValue(self, prop, value)
+        update(value)
+    }
+}
+
 object ZinniaSettings {
     private val api = SettingsAPI(Zinnia.NAME)
 
-    var mode by api.delegateEnum(Mode.Block)
+    private var onStateUpdate = {}
 
-    var dotKeepNameColour by api.delegate(false)
+    private inline fun <T> reactive(backing: () -> Delegate<T>): StateDelegate<T> {
+        return StateDelegate(backing()) { onStateUpdate() }
+    }
 
-    var blockAlsoDefault by api.delegate(true)
-    var blockInverted by api.delegate(false)
-    var blockMode by api.delegateEnum(BlockMode.ApcaLightWcagDark)
-    var blockApcaThreshold by api.delegate(75.0)
-    var blockWcagThreshold by api.delegate(4.5)
+    var mode by reactive { api.delegateEnum(Mode.Block) }
+
+    var dotKeepNameColour by reactive { api.delegate(false) }
+
+    var blockAlsoDefault by reactive { api.delegate(true) }
+    var blockInverted by reactive { api.delegate(false) }
+    var blockMode by reactive { api.delegateEnum(BlockMode.ApcaLightWcagDark) }
+    var blockApcaThreshold by reactive { api.delegate(45.0f) }
+    var blockWcagThreshold by reactive { api.delegate(4.5f) }
+
+    private val _alpha = reactive { api.delegate("alpha", 255) }
+    var alpha by _alpha
 
     class Page : SettingsPage() {
         private lateinit var manager: RadioManager
@@ -68,6 +111,13 @@ object ZinniaSettings {
         private lateinit var mBlock: CheckedSetting
 
         private val checks = mutableListOf<CheckedSetting>()
+
+        private val _previewH = reactive { basicDelegate(0) }
+        private var previewH by _previewH
+        private val _previewS = reactive { basicDelegate(100) }
+        private var previewS by _previewS
+        private val _previewV = reactive { basicDelegate(100) }
+        private var previewV by _previewV
 
         private fun createRadio(newMode: BlockMode, text: String, subtext: String? = null): CheckedSetting {
             return Utils.createCheckedSetting(requireContext(), CheckedSetting.ViewType.RADIO, text, subtext).addTo(linearLayout) {
@@ -81,6 +131,60 @@ object ZinniaSettings {
             }
         }
 
+        private fun createSlider(
+            min: Int,
+            max: Int,
+            initial: Int = min,
+            onChange: (value: Int, commit: Boolean) -> String
+        ): LinearLayout {
+            var pendingValue = initial
+            return LinearLayout(requireContext(), null, 0, R.i.UiKit_Settings_Item).addTo(linearLayout) {
+                orientation = LinearLayout.VERTICAL
+                val display = TextView(context, null, 0, R.i.UiKit_TextView).addTo(this) {
+                    textSize = 16.0f
+                    typeface = ResourcesCompat.getFont(context, Constants.Fonts.whitney_medium)
+                    text = onChange(initial, false)
+                    layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                        bottomMargin = 4.dp
+                    }
+                }
+                SeekBar(context, null, 0, R.i.UiKit_SeekBar).addTo(this) {
+                    this.max = max - min
+                    progress = initial
+                    setPadding(12.dp, 0, 12.dp, 0)
+                    setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                        override fun onProgressChanged(
+                            seekBar: SeekBar,
+                            progress: Int,
+                            fromUser: Boolean,
+                        ) {
+                            pendingValue = min + progress
+                            display.text = onChange(pendingValue, false)
+                        }
+
+                        override fun onStartTrackingTouch(seekBar: SeekBar) {}
+                        override fun onStopTrackingTouch(seekBar: SeekBar) {
+                            onChange(pendingValue, true)
+                        }
+                    })
+                }
+            }
+        }
+
+        private fun createSlider(binding: Delegate<Int>, min: Int, max: Int, immediate: Boolean = false, label: (Int) -> String): LinearLayout {
+            var value by binding
+            return createSlider(min, max, value) { newValue, commit ->
+                @Suppress("AssignedValueIsNeverRead") // kt so dumb
+                if (immediate || commit) value = newValue
+                label(newValue)
+            }
+        }
+
+        override fun onDestroyView() {
+            onStateUpdate = {}
+            super.onDestroyView()
+        }
+
         override fun onViewBound(view: View) {
             super.onViewBound(view)
             setActionBarTitle(Zinnia.NAME)
@@ -92,11 +196,12 @@ object ZinniaSettings {
                 val roleDotSettings = mutableListOf<CheckedSetting>()
 
                 addHeader(ctx, "Text colour")
-                createRadio(BlockMode.ApcaLightWcagDark, "Automatic", "Adjusts text colour based on role colour")
-                createRadio(BlockMode.ThemeOnly, "By theme", "Adjusts text colour based on theme")
+                createRadio(BlockMode.ApcaLightWcagDark, "Automatic", "Adjusts text colour based on optimal contrast with role colour")
+                createRadio(BlockMode.ThemeOnly, "By theme", "Adjusts text colour based on system theme (dark/light)")
                 createRadio(BlockMode.InvertedThemeOnly, "By theme (inverted)", "Same as above, but inverted")
                 createRadio(BlockMode.WhiteOnly, "White", "Force text colour to be white")
                 createRadio(BlockMode.BlackOnly, "Black", "Force text colour to be black")
+                createRadio(BlockMode.Unchanged, "Unchanged", "Keep text colour; ideal for using with a translucent block")
 
                 /*
                 addHeader(ctx, "Mode")
@@ -129,24 +234,12 @@ object ZinniaSettings {
                 */
 
                 addHeader(ctx, "Block Settings")
-                Utils.createCheckedSetting(
-                    ctx,
-                    CheckedSetting.ViewType.SWITCH,
-                    "Also block up default colours",
-                    "Blocks up usernames that have no role colour",
-                ).addTo(this) {
-                    isChecked = blockAlsoDefault
-                    setOnCheckedListener {
-                        blockAlsoDefault = !blockAlsoDefault
-                    }
-                    blockSettings.add(this)
-                }
 
-                Utils.createCheckedSetting(
+                val invertSwitch = Utils.createCheckedSetting(
                     ctx,
                     CheckedSetting.ViewType.SWITCH,
                     "Invert block colours",
-                    "By default, the role colour is applied as the block background. Turning this setting on instead makes the block black or white, and the text stays coloured.",
+                    "By default, the role colour is applied as the block background. Turning this setting on inverts this.\nHas no effect with \"Unchanged\" colour option",
                 ).addTo(this) {
                     isChecked = blockInverted
                     setOnCheckedListener {
@@ -154,7 +247,50 @@ object ZinniaSettings {
                     }
                     blockSettings.add(this)
                 }
+
+                createSlider(_alpha, 0, 255, true) { "Alpha: ${(it / 2.55f).roundToInt()}%" }
+
+//                createSlider(0, 255, blockApcaThreshold.roundToInt()) { value, commit ->
+//                    blockApcaThreshold = value.toFloat()
+//                    "Apca Threshold: $value"
+//                }
+
+                addHeader(ctx, "Preview")
+                val preview = TextView(ctx, null, 0, R.i.UiKit_TextView_Large_SingleLine).addTo(this) {
+                    val me = StoreStream.getUsers().me
+                    text = me.globalName ?: me.username
+                    layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                        marginStart = 16.dp
+                        marginEnd = 16.dp
+                    }
+                }
+
+                val hsv = floatArrayOf(0f, 0f, 0f)
+                Color.colorToHSV(ColorCompat.getThemedColor(this, R.b.color_brand), hsv)
+                previewH = hsv[0].roundToInt()
+                previewS = (hsv[1] * 100).roundToInt()
+                previewV = (hsv[2] * 100).roundToInt()
+                createSlider(_previewH, 0, 360, true) { "Hue: $it" }
+                createSlider(_previewS, 0, 100, true) { "Saturation: $it%" }
+                createSlider(_previewV, 0, 100, true) { "Value: $it%" }
+
+                onStateUpdate = {
+                    updatePreview(preview)
+                    if (blockMode != BlockMode.Unchanged) {
+                        invertSwitch.l.b().isClickable = true
+                        invertSwitch.alpha = 1f
+                    } else {
+                        invertSwitch.l.b().isClickable = false
+                        invertSwitch.alpha = 0.3f
+                    }
+                }
+                onStateUpdate()
             }
+        }
+
+        fun updatePreview(preview: TextView) {
+            val colour = Color.HSVToColor(floatArrayOf(previewH.toFloat(), previewS / 100f, previewV / 100f))
+            APCAUtil.configureOn(preview, colour)
         }
     }
 }
