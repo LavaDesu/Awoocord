@@ -1,4 +1,4 @@
-version = "1.0.2"
+version = "1.0.3"
 description = "More lenient message grouping"
 
 android {
@@ -8,6 +8,9 @@ android {
 aliucord {
     // Changelog of your plugin
     changelog.set("""
+        # 1.0.3
+        * Clump more than 6 messages together
+
         # 1.0.2
         * Fix (inverted) webhook clumping
 
