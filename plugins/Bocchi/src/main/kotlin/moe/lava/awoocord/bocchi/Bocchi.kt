@@ -51,7 +51,7 @@ class Bocchi : Plugin() {
 //                message.mentions?.isNotEmpty() == true ||
 //                message.hasAttachments() ||
 //                message.hasEmbeds() ||
-                items.concatCount >= 5 ||
+//                items.concatCount >= 5 ||
                 (message.isWebhook && message.author?.username != message2.author.username)
             )
         }
