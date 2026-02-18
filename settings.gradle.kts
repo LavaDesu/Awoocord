@@ -28,6 +28,7 @@ val plugins = mapOf(
     "Clump" to "plugins/Bocchi",
     "Scout" to "plugins/Scout",
     "RoleBlocks" to "plugins/Zinnia",
+    "Glance" to "plugins/Myosotis",
 )
 
 include(*plugins.keys.toTypedArray())
