@@ -1,9 +1,13 @@
-version = "1.2.0"
+version = "1.2.1"
 description = "Coloured usernames to be a bit more pleasing on the eyes"
 
 aliucord {
     // Changelog of your plugin
     changelog.set("""
+        # 1.2.1
+        * Use correct default block colour in replies
+        * Use correct default block colour in "unchanged" mode
+
         # 1.2.0
         * Finally fixes the annoying padding issue in replies
         * Adds nice preview blocks in settings with configurable hsv bars for all your previewing needs
