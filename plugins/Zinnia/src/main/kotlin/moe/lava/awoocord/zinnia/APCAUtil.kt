@@ -32,17 +32,21 @@ internal object APCAUtil {
         val bcol = GradientDrawable()
         bcol.cornerRadius = 4.dp.toFloat()
         view.background = bcol
+        view.setPadding(4.dp, 0, 4.dp, 0)
 
         if (colour == Color.BLACK) {
             if (settings.blockAlsoDefault) {
-                colour = if (isLight && !settings.blockInverted) Color.WHITE else Color.BLACK
+                colour = if (isLight && (settings.blockInverted || settings.blockMode == BlockMode.Unchanged)) {
+                    Color.BLACK
+                } else {
+                    Color.WHITE
+                }
             } else {
                 view.background = null
                 view.setPadding(0, 0, 0, 0)
                 return
             }
         }
-        view.setPadding(4.dp, 0, 4.dp, 0)
 
         var (preferred, other) = if (isLight) {
             Color.WHITE to Color.BLACK
@@ -53,7 +57,7 @@ internal object APCAUtil {
             BlockMode.InvertedThemeOnly -> preferred = other
             BlockMode.WhiteOnly -> preferred = Color.WHITE
             BlockMode.BlackOnly -> preferred = Color.BLACK
-            BlockMode.Unchanged -> preferred = colourP
+            BlockMode.Unchanged -> preferred = colour
             else -> {}
         }
 
@@ -88,11 +92,9 @@ internal object APCAUtil {
         if (usePreferred) {
             view.setTextColor(colours.fgP)
             bcol.setColor(ColorUtils.setAlphaComponent(colours.bgP, settings.alpha))
-            bcol.alpha = settings.alpha
         } else {
             view.setTextColor(colours.fgO)
             bcol.setColor(ColorUtils.setAlphaComponent(colours.bgO, settings.alpha))
-            bcol.alpha = settings.alpha
         }
     }
 
