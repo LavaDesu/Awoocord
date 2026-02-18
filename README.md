@@ -8,6 +8,10 @@ Wrap messages in bubbles inspired by Material 3 Expressive
 
 Group messages more leniently (e.g. mentions, attachments, etc..), reducing clutter and wasted space.
 
+## [Glance](plugins/Myosotis) | [Download](https://github.com/cillynder/Awoocord/raw/builds/Glance.zip)
+
+Backports DM previews similar to latest RN. Shows you a line of the last message sent in a DM.
+
 ## [RoleBlocks](plugins/Zinnia) | [Download](https://github.com/cillynder/Awoocord/raw/builds/RoleBlocks.zip)
 
 Apply the role colour as a background of usernames, improving contrast with some role colours
