@@ -1,6 +1,7 @@
 package moe.lava.awoocord.zinnia
 
 import android.content.Context
+import android.graphics.Color
 import android.view.View
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -10,9 +11,11 @@ import com.aliucord.patcher.after
 import com.aliucord.patcher.component1
 import com.aliucord.patcher.component2
 import com.aliucord.patcher.component3
+import com.aliucord.patcher.instead
 import com.aliucord.utils.DimenUtils.dp
 import com.aliucord.utils.accessField
 import com.discord.databinding.WidgetChannelMembersListItemUserBinding
+import com.discord.models.member.GuildMember
 import com.discord.widgets.channels.memberlist.adapter.ChannelMembersListAdapter
 import com.discord.widgets.channels.memberlist.adapter.ChannelMembersListViewHolderMember
 import com.discord.widgets.chat.list.adapter.WidgetChatListAdapterItemMessage
@@ -79,6 +82,13 @@ class Zinnia : Plugin() {
             itemName?.let {
                 APCAUtil.configureOn(it, entry.author?.color, Threshold.Large)
             }
+        }
+
+        patcher.instead<WidgetChatListAdapterItemMessage>(
+            "getAuthorTextColor",
+            GuildMember::class.java,
+        ) { (_, member: GuildMember?) ->
+            member?.color ?: Color.BLACK
         }
 
         // Configures for reply preview username
