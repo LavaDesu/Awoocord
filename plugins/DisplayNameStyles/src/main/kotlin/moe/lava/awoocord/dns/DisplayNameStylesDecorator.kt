@@ -15,14 +15,18 @@ import com.aliucord.api.PatcherAPI
 import com.aliucord.patcher.before
 import com.aliucord.patcher.component1
 import com.aliucord.patcher.component2
+import com.aliucord.utils.ChannelUtils
 import com.aliucord.utils.ViewUtils.findViewById
 import com.aliucord.utils.accessField
 import com.aliucord.wrappers.users.displayNameStyles
 import com.discord.api.user.DisplayNameStyle
 import com.discord.databinding.WidgetChannelMembersListItemUserBinding
+import com.discord.databinding.WidgetChannelsListItemChannelPrivateBinding
 import com.discord.models.user.User
 import com.discord.stores.StoreStream
 import com.discord.utilities.spans.TypefaceSpanCompat
+import com.discord.widgets.channels.list.WidgetChannelsListAdapter
+import com.discord.widgets.channels.list.items.ChannelListItemPrivate
 import com.discord.widgets.channels.memberlist.adapter.ChannelMembersListAdapter
 import com.discord.widgets.channels.memberlist.adapter.ChannelMembersListViewHolderMember
 import com.discord.widgets.chat.list.adapter.WidgetChatListAdapterItemMessage
@@ -35,6 +39,7 @@ import java.util.WeakHashMap
 internal val logger = Logger("DisplayNameStyles")
 
 private val ChannelMembersListViewHolderMember.binding by accessField<WidgetChannelMembersListItemUserBinding>()
+private val WidgetChannelsListAdapter.ItemChannelPrivate.binding by accessField<WidgetChannelsListItemChannelPrivateBinding>()
 
 internal class DisplayNameStylesDecorator() : Decorator() {
     private val defaultTypeface = WeakHashMap<TextView, Typeface>()
@@ -121,6 +126,15 @@ internal class DisplayNameStylesDecorator() : Decorator() {
         val username = holder.itemView.findViewById<TextView?>("chat_list_adapter_item_text_name")
             ?: return
         configureOn(username, entry.message.author.displayNameStyles, false)
+    }
+
+    override fun onDMsListConfigure(
+        holder: WidgetChannelsListAdapter.ItemChannelPrivate,
+        item: ChannelListItemPrivate
+    ) {
+        val usernameTextView = holder.binding.f
+        val user = ChannelUtils.getDMRecipient(item.channel)
+        configureOn(usernameTextView, user?.displayNameStyles, item.selected)
     }
 
     override fun patch(patcher: PatcherAPI) {
