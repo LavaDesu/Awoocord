@@ -1,4 +1,4 @@
-version = "0.1.0"
+version = "0.2.0"
 description = "Display name styles"
 
 android {
@@ -8,6 +8,9 @@ android {
 aliucord {
     // Changelog of your plugin
     changelog.set("""
+        # 0.2.0
+        * Apply styles in DMs list
+
         # 0.1.0
         * Initial release >w<
     """.trimIndent())
