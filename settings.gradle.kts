@@ -26,6 +26,7 @@ val plugins = mapOf(
     "SlashCommandsFixBeta" to "canary/SlashCommandsFix",
     "Bubbles" to "plugins/Crocosmia",
     "Clump" to "plugins/Bocchi",
+    "DisplayNameStyles" to "plugins/DisplayNameStyles",
     "Scout" to "plugins/Scout",
     "RoleBlocks" to "plugins/Zinnia",
     "Glance" to "plugins/Myosotis",
