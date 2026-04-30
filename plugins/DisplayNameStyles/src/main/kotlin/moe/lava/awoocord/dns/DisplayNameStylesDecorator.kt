@@ -11,6 +11,7 @@ import android.view.View.OnLayoutChangeListener
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
 import com.aliucord.Logger
+import com.aliucord.Utils
 import com.aliucord.api.PatcherAPI
 import com.aliucord.patcher.before
 import com.aliucord.patcher.component1
@@ -58,9 +59,11 @@ internal class DisplayNameStylesDecorator() : Decorator() {
 
         font.url?.let {
             FontHandler.fetch(font) {
-                if (!defaultTypeface.contains(view))
-                    defaultTypeface[view] = view.typeface
-                view.typeface = it
+                Utils.mainThread.post {
+                    if (!defaultTypeface.contains(view))
+                        defaultTypeface[view] = view.typeface
+                    view.typeface = it
+                }
             }
         }
 
@@ -116,9 +119,9 @@ internal class DisplayNameStylesDecorator() : Decorator() {
         val binding = UserProfileHeaderView.`access$getBinding$p`(view)
         val usernameView = binding.j
         val usernameTextView = usernameView.j.c
-        state.user.displayNameStyles?.let {
-            logger.info("${state.user.username}: $it")
-        }
+//        state.user.displayNameStyles?.let {
+//            logger.info("${state.user.username}: $it")
+//        }
         configureOn(usernameTextView, state.user.displayNameStyles, true)
     }
 

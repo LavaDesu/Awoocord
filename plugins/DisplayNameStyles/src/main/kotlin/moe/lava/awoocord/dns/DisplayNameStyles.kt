@@ -14,9 +14,12 @@ internal typealias Decorator = com.aliucord.coreplugins.decorations.Decorator
 @Suppress("unused")
 internal class DisplayNameStyles : Plugin() {
     override fun load(context: Context) {
+        if (!PluginManager.isPluginEnabled(this)) return
+
         val decoPlug = PluginManager.plugins["Decorations"] as? Decorations
             ?: return logger.warn("Decorations not loaded, possibly outdated client")
 
+        logger.info("injecting into Decorations..")
         @Suppress("UNCHECKED_CAST")
         val decorators = ReflectUtils.getField(decoPlug, "decorators") as List<Decorator>
         ReflectUtils.setFinalField(decoPlug, "decorators", decorators + DisplayNameStylesDecorator())
