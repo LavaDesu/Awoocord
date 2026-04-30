@@ -1,4 +1,4 @@
-version = "0.2.0"
+version = "0.2.1"
 description = "Display name styles"
 
 android {
@@ -8,6 +8,11 @@ android {
 aliucord {
     // Changelog of your plugin
     changelog.set("""
+        # 0.2.1
+        * Fix app breaking sometimes
+        * Actually disable the plugin if it is disabled
+        * Removed log spam
+
         # 0.2.0
         * Apply styles in DMs list
 
