@@ -10,10 +10,16 @@ import rx.subjects.BehaviorSubject
 import java.io.File
 
 internal object FontHandler {
-    private val cachedTypefaces = mutableMapOf<FontStyle, BehaviorSubject<Typeface>>()
+    private val pendingTypefaces = mutableMapOf<FontStyle, BehaviorSubject<Typeface>>()
+    private val resolvedTypefaces = mutableMapOf<FontStyle, Typeface>()
 
     fun fetch(style: FontStyle, onValue: (Typeface) -> Unit) {
-        val subject = cachedTypefaces.getOrPut(style) {
+        resolvedTypefaces[style]?.let {
+            onValue(it)
+            return@fetch
+        }
+
+        val subject = pendingTypefaces.getOrPut(style) {
 //            logger.info("finding $style")
             val subject = BehaviorSubject.k0<Typeface>()
             Utils.threadPool.execute {
@@ -41,6 +47,9 @@ internal object FontHandler {
         }
 
         subject.z() // .first()
-            .subscribe(onValue)
+            .subscribe {
+                resolvedTypefaces[style] = this
+                Utils.mainThread.post { onValue(this) }
+            }
     }
 }
