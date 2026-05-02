@@ -27,8 +27,12 @@ internal object FontHandler {
 //                logger.info("found $style")
                 val typeface = Typeface.createFromFile(path)
                 // If we get androidx core 1.9.0 we can use TypefaceCompat.create with a weight
-                if (style.isVariable && Build.VERSION.SDK_INT >= 28) {
-                    subject.onNext(Typeface.create(typeface, 500, false))
+                if (style.isVariable) {
+                    if (Build.VERSION.SDK_INT >= 28) {
+                        subject.onNext(Typeface.create(typeface, 500, false))
+                    } else {
+                        subject.onNext(TypefaceCompat.create(Utils.appContext, typeface, Typeface.BOLD))
+                    }
                 } else {
                     subject.onNext(TypefaceCompat.create(Utils.appContext, typeface, Typeface.NORMAL))
                 }
