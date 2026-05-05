@@ -39,6 +39,7 @@ import com.discord.api.permission.Permission
 import com.discord.databinding.WidgetSearchSuggestionItemHeaderBinding
 import com.discord.databinding.WidgetSearchSuggestionsItemHasBinding
 import com.discord.databinding.WidgetSearchSuggestionsItemSuggestionBinding
+import com.discord.models.guild.UserGuildMember
 import com.discord.models.member.GuildMember
 import com.discord.models.user.User
 import com.discord.restapi.RequiredHeadersInterceptor
@@ -71,6 +72,7 @@ import com.discord.utilities.search.suggestion.entries.ChannelSuggestion
 import com.discord.utilities.search.suggestion.entries.FilterSuggestion
 import com.discord.utilities.search.suggestion.entries.HasSuggestion
 import com.discord.utilities.search.suggestion.entries.SearchSuggestion
+import com.discord.utilities.search.suggestion.entries.UserSuggestion
 import com.discord.utilities.search.validation.SearchData
 import com.discord.widgets.search.results.WidgetSearchResults
 import com.discord.widgets.search.suggestions.WidgetSearchSuggestions
@@ -130,6 +132,7 @@ class Scout : Plugin() {
         fixSearchPadding()
         patchHasAnswerOption()
         patchHasNode()
+        patchMeSuggestion()
         patchQuery()
         patchQueryParser()
         patchSearchUI(context)
@@ -477,6 +480,44 @@ class Scout : Plugin() {
                 FilterNode(FilterType.HAS, hasFilterText)
 
             replaceAndPublish.invoke(this, replacementIdx, listOf(filterNode, HasNode(opt, filterAnswer)), query)
+        }
+    }
+
+    // Patches user suggestions to take in "me"
+    private fun patchMeSuggestion() {
+        // Hoist self to top
+        patcher.before<UserSuggestion>(
+            "compareTo",
+            UserSuggestion::class.java,
+        ) { (param, other: UserSuggestion) ->
+            val meId = StoreStream.getUsers().me.id
+            if (this.userId == meId)
+                param.result = -1
+            else if (other.userId == meId)
+                param.result = 1
+        }
+
+        // Show self in autocomplete with "me"
+        patcher.after<SearchSuggestionEngine>(
+            "getUserSuggestions",
+            CharSequence::class.java,
+            FilterType::class.java,
+            Map::class.java,
+        ) { (param, input: CharSequence, filterType: FilterType, members: Map<Long, UserGuildMember>) ->
+            val target = when (filterType) {
+                FilterType.FROM -> UserSuggestion.TargetType.FROM
+                FilterType.MENTIONS -> UserSuggestion.TargetType.MENTIONS
+                else -> return@after
+            }
+            if ("me".contains(input.toString().lowercase())) {
+                val res = param.result as Collection<UserSuggestion>
+                val meId = StoreStream.getUsers().me.id
+
+                if (res.any { it.userId == meId }) return@after
+
+                val member = members[meId] ?: return@after
+                param.result = listOf(UserSuggestion(member.user, target, member.guildMember)) + res
+            }
         }
     }
 
