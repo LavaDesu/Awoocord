@@ -36,6 +36,7 @@ import com.discord.api.channel.Channel
 import com.discord.api.channel.ChannelUtils
 import com.discord.api.channel.`ChannelUtils$getSortByNameAndType$1`
 import com.discord.api.permission.Permission
+import com.discord.app.AppFragment
 import com.discord.databinding.WidgetSearchSuggestionItemHeaderBinding
 import com.discord.databinding.WidgetSearchSuggestionsItemHasBinding
 import com.discord.databinding.WidgetSearchSuggestionsItemSuggestionBinding
@@ -74,6 +75,9 @@ import com.discord.utilities.search.suggestion.entries.HasSuggestion
 import com.discord.utilities.search.suggestion.entries.SearchSuggestion
 import com.discord.utilities.search.suggestion.entries.UserSuggestion
 import com.discord.utilities.search.validation.SearchData
+import com.discord.utilities.view.extensions.ViewExtensions
+import com.discord.widgets.search.WidgetSearch
+import com.discord.widgets.search.`WidgetSearch$configureSearchInput$5`
 import com.discord.widgets.search.results.WidgetSearchResults
 import com.discord.widgets.search.suggestions.WidgetSearchSuggestions
 import com.discord.widgets.search.suggestions.`WidgetSearchSuggestions$configureUI$1`
@@ -102,6 +106,12 @@ private val WidgetSearchSuggestionsAdapter.FilterViewHolder.binding
 
 private val WidgetSearchSuggestionsAdapter.HeaderViewHolder.binding
         by accessField<WidgetSearchSuggestionItemHeaderBinding>()
+
+// ReflectDelegates do not work with subclasses
+private val recreatedField = AppFragment::class.java.getDeclaredField("isRecreated").apply { isAccessible = true }
+private var WidgetSearch.recreatedAccess
+    get() = recreatedField.get(this)
+    set(value) { recreatedField.set(this, value) }
 
 @AliucordPlugin
 @Suppress("unused", "unchecked_cast")
@@ -135,6 +145,7 @@ class Scout : Plugin() {
         patchMeSuggestion()
         patchQuery()
         patchQueryParser()
+        patchSearchStatePersist()
         patchSearchUI(context)
         patchThreadSupport()
         patchUsernameDiscriminator()
@@ -596,6 +607,50 @@ class Scout : Plugin() {
                     ParseSpec(FilterNode(FilterTypeExtension.EXCLUDE, ssProvider.excludeFilterString), obj)
                 }
             ))
+        }
+    }
+
+    // Persist search state when backing out
+    private fun patchSearchStatePersist() {
+        var persisting = false
+
+        patcher.before<WidgetSearch>(
+            "configureUI",
+            WidgetSearch.Model::class.java
+        ) { (_, model: WidgetSearch.Model) ->
+            persisting = model.displayState == StoreSearch.DisplayState.RESULTS
+        }
+
+        patcher.before<StoreSearch>("clear") { param ->
+            if (persisting) param.result = null
+        }
+
+        // Persist search input state
+        var lastInput = ""
+        patcher.after<WidgetSearch>("configureSearchInput") {
+            if (persisting) {
+                val input = WidgetSearch.`access$getBinding$p`(this).c
+                ViewExtensions.setText(input, lastInput);
+                ViewExtensions.setSelectionEnd(input);
+            } else {
+                lastInput = ""
+            }
+        }
+        patcher.after<`WidgetSearch$configureSearchInput$5`>(
+            "invoke",
+            String::class.java,
+        ) { (_, input: String) ->
+            lastInput = input
+        }
+
+        // Don't show keyboard when persisting
+        var recreated = false
+        patcher.before<WidgetSearch>("onViewBound", View::class.java) {
+            recreated = isRecreated
+            recreatedAccess = persisting
+        }
+        patcher.after<WidgetSearch>("onViewBound", View::class.java) {
+            recreatedAccess = recreated
         }
     }
 
