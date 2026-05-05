@@ -1,4 +1,4 @@
-version = "1.4.2"
+version = "1.4.3"
 description = "Backported and improved search functionality"
 
 android {
@@ -14,6 +14,9 @@ aliucord {
 
         Changelog {added marginTop}
         ======================
+        # 1.4.3
+        * Clear search state when switching servers or DMs
+
         # 1.4.2
         * Keeps search state when backing out of results
         * Don't show keyboard when returning to search results
