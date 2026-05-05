@@ -610,25 +610,34 @@ class Scout : Plugin() {
         }
     }
 
+    private val currentGuildChannel: Long get() =
+        StoreStream.getGuildSelected().selectedGuildId
+            .takeIf { it != 0L }
+            ?: StoreStream.getChannelsSelected().id
+
     // Persist search state when backing out
     private fun patchSearchStatePersist() {
-        var persisting = false
+        var lastGuildChannel: Long? = null
 
         patcher.before<WidgetSearch>(
             "configureUI",
             WidgetSearch.Model::class.java
         ) { (_, model: WidgetSearch.Model) ->
-            persisting = model.displayState == StoreSearch.DisplayState.RESULTS
+            if (model.displayState == StoreSearch.DisplayState.RESULTS) {
+                lastGuildChannel = currentGuildChannel
+            } else {
+                lastGuildChannel = null
+            }
         }
 
         patcher.before<StoreSearch>("clear") { param ->
-            if (persisting) param.result = null
+            if (lastGuildChannel == currentGuildChannel) param.result = null
         }
 
         // Persist search input state
         var lastInput = ""
         patcher.after<WidgetSearch>("configureSearchInput") {
-            if (persisting) {
+            if (lastGuildChannel == currentGuildChannel) {
                 val input = WidgetSearch.`access$getBinding$p`(this).c
                 ViewExtensions.setText(input, lastInput);
                 ViewExtensions.setSelectionEnd(input);
@@ -647,7 +656,7 @@ class Scout : Plugin() {
         var recreated = false
         patcher.before<WidgetSearch>("onViewBound", View::class.java) {
             recreated = isRecreated
-            recreatedAccess = persisting
+            recreatedAccess = lastGuildChannel == currentGuildChannel
         }
         patcher.after<WidgetSearch>("onViewBound", View::class.java) {
             recreatedAccess = recreated
