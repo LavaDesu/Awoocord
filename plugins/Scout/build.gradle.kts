@@ -1,4 +1,4 @@
-version = "1.4.1"
+version = "1.4.2"
 description = "Backported and improved search functionality"
 
 android {
@@ -14,6 +14,10 @@ aliucord {
 
         Changelog {added marginTop}
         ======================
+        # 1.4.2
+        * Keeps search state when backing out of results
+        * Don't show keyboard when returning to search results
+
         # 1.4.1
         * Shows self when typing "me" in from: or mentions: suggestions
 
