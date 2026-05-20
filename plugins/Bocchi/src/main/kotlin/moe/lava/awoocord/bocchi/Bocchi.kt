@@ -14,6 +14,7 @@ import com.discord.widgets.chat.list.entries.ChatListEntry
 import com.discord.widgets.chat.list.entries.MessageEntry
 import com.discord.widgets.chat.list.model.WidgetChatListModelMessages
 
+private val Message.messageSnapshots by accessField<List<*>?>()
 private val WidgetChatListAdapterItemMessage.itemText by accessField<SimpleDraweeSpanTextView>()
 
 @AliucordPlugin(requiresRestart = true)
@@ -43,6 +44,8 @@ class Bocchi : Plugin() {
                 message2.hasThread() ||
                 message.type !in arrayOf(MessageTypes.DEFAULT, MessageTypes.LOCAL) ||
                 message.author.id != message2.author.id ||
+                message.messageSnapshots?.isNotEmpty() == true ||
+                message2.messageSnapshots?.isNotEmpty() == true ||
                 timeDiff >= 420000 || // WidgetChatListModelMessages.MESSAGE_CONCAT_TIMESTAMP_DELTA_THRESHOLD
 //                items.listItemMostRecentlyAdded.type !in arrayOf(0, 1, 4, 21) ||
 //                message2.hasAttachments() ||
